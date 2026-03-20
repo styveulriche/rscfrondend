@@ -1,0 +1,438 @@
+const translations = {
+
+  // ───────────────────────────────────────────────────────────────
+  // FRANÇAIS
+  // ───────────────────────────────────────────────────────────────
+  fr: {
+
+    nav: {
+      home:     'Accueil',
+      about:    'À propos',
+      learn:    'Savoir+',
+      services: 'Nos services',
+      donate:   'Dons',
+      contact:  'Contact',
+      login:    'Se connecter',
+      mySpace:  'Mon espace',
+    },
+
+    footer: {
+      desc:       "Retour aux Sources Canada est une plateforme communautaire dédiée à aider les membres de la diaspora africaine au Canada dans l'organisation et le financement du rapatriement de leurs défunts vers leur pays d'origine.",
+      quickLinks: 'Liens rapides',
+      about:      'À propos',
+      services:   'Services',
+      donate:     'Dons',
+      login:      'Connexion',
+      register:   'Créer un compte',
+      contact:    'Contact',
+      copyright:  'Copyright © 2024 RSC — Retour aux Sources Canada. Tous droits réservés.',
+    },
+
+    home: {
+      heroTag:      'RETOUR AUX SOURCES CANADA',
+      heroTitle:    'La solidarité qui unit la diaspora même dans les moments les plus difficiles',
+      heroSub:      "Nous vous accompagnons dans toutes les démarches liées à l'organisation, la transparence et la sécurisation du rapatriement vers le pays d'origine. Une initiative qui a à cœur de prendre en charge toutes les situations et les accompagner tout au long du processus. Africains du Canada, Rejoignez notre communauté.",
+      discover:     'Découvrir',
+      start:        'Commencer',
+      whyTitle:     'Pourquoi RSC ?',
+      whySubtitle:  'Une plateforme pensée pour la diaspora',
+      whyText1:     "Retour aux Sources Canada est né d'un besoin essentiel : répondre aux membres de la diaspora africaine vivant au Canada et leur fournir un appui lors de l'un des moments les plus difficiles de leur vie.",
+      whyText2:     "Notre mission est de simplifier les démarches, réduire les coûts et garantir une dignité totale dans le processus de rapatriement. Chaque membre fait partie de la communauté RSC et bénéficie des services adaptés à sa situation : compassion et engagement. Plus l'effectif augmente, meilleures sont les chances d'un appui financier individuel adéquat.",
+      servicesTitle: 'Nos services',
+      servicesDesc:  'RSC met à votre disposition plusieurs services pour accompagner les membres tout au long du processus, permettant à chacun de vivre la fin de vie de leurs proches avec sérénité.',
+      quote:         '« Parce que même loin de nos terres, nos racines méritent respect, dignité et solidarité. »',
+      services: [
+        { name: 'Assurer',   desc: 'Protection et garanties pour tous les membres' },
+        { name: 'Donner',    desc: 'Contributions volontaires à la communauté' },
+        { name: 'Réunir',    desc: 'Rassembler la diaspora autour de valeurs communes' },
+        { name: 'Militer',   desc: 'Défendre les droits de la diaspora' },
+        { name: 'Appuyer',   desc: 'Soutien moral et administratif aux familles' },
+        { name: 'Organiser', desc: 'Coordination logistique du rapatriement' },
+        { name: 'Aider',     desc: 'Assistance directe aux familles dans le besoin' },
+        { name: 'Inscrire',  desc: 'Adhésion simple et sécurisée à la plateforme' },
+        { name: 'Gérer',     desc: 'Administration transparente des fonds collectés' },
+        { name: 'Suivre',    desc: 'Suivi en temps réel des dossiers et dons' },
+      ],
+    },
+
+    about: {
+      heroTag:              'RETOUR AUX SOURCES CANADA',
+      heroTitle:            'À propos',
+      heroSub:              'Découvrez qui nous sommes, notre mission et nos engagements envers la diaspora africaine du Canada.',
+      whatTitle:            "C'est quoi RSC ?",
+      whatText1:            "Retour aux Sources Canada (RSC) est une plateforme numérique communautaire créée pour accompagner les membres de la diaspora africaine vivant au Canada dans l'organisation du rapatriement de leurs défunts vers leur pays d'origine.",
+      whatText2:            "Elle s'occupe pour chacun de ses membres, en cas de décès, de faciliter le processus du rapatriement vers leur pays d'origine à travers une structure humaine et organisée. Chaque membre fait partie de la communauté RSC et bénéficie des services adaptés : compassion et engagement.",
+      missionTitle:         'Notre mission',
+      missionText:          "Accompagner la diaspora africaine du Canada dans la sécurisation et la gestion de l'organisation du rapatriement vers leur pays d'origine, en s'appuyant sur la solidarité communautaire et des outils numériques adaptés.",
+      missionIntro:         'Notre mission est de :',
+      missionItems: [
+        'Simplifier les démarches liées au rapatriement',
+        'Analyser un suivi clair et traçable',
+        'Garantir un accompagnement humain et respectueux des familles',
+      ],
+      objectivesTitle:      'Nos objectifs',
+      objectivesMain:       'Objectif principal :',
+      objectivesMainText:   "Permettre l'organisation efficace et digne du rapatriement des défunts de la diaspora africaine vers leur pays d'origine.",
+      objectivesSecondary:  'Objectifs secondaires :',
+      objectivesItems: [
+        "Aider à l'organisation des obsèques au pays des familles",
+        'Sécuriser les transactions financières et les données personnelles',
+        'Assurer un accès ouvert et continu aux services multi-supports',
+        "Insuffler de l'aide et de la cohésion au cœur de la diaspora",
+      ],
+    },
+
+    learn: {
+      heroTag:         'RETOUR AUX SOURCES CANADA',
+      heroTitle:       'Comment RSC fonctionne',
+      heroSub:         "Comprendre notre plateforme, nos valeurs d'intégrité et les conditions pour rejoindre notre communauté.",
+      howTitle:        'Comment fonctionne Retour aux Sources (RSC)',
+      howText:         "Retour aux Sources Canada a été pensée pour offrir une expérience cohérente à chaque membre. En cas de décès, la plateforme guide les proches étape par étape afin de garantir une prise en charge fluide, transparente et respectueuse.",
+      howSteps: [
+        {
+          title: 'Inscription et vérification',
+          text:  "Chaque membre s'enregistre et complète son profil. Il y fournit ses informations personnelles et est orienté vers un traitement adapté.",
+        },
+        {
+          title: 'Sélection des services',
+          text:  "Les services adaptés à votre situation vous sont automatiquement proposés selon votre éligibilité en tenant compte de la comptabilité de vos données.",
+        },
+        {
+          title: 'Protection et accompagnement',
+          text:  "En cas de besoin, RSC active l'accompagnement, coordonne les démarches administratives et assure un suivi transparent et sécurisé.",
+        },
+      ],
+      integrityTitle: 'Intégrité et professionnalisme',
+      integrityText1: "Les fonds des donations et des associations membres sont utilisés selon des règles budgétaires strictes et dans une transparence totale. RSC n'utilise pas de fonds personnels ou extérieurs aux familles.",
+      integrityText2: "Nous fonctionnons selon des principes stricts de transparence financière. RSC ne perçoit pas d'impôts ni de frais de transaction. Chaque sou est affecté à son objet initial. Nous croyons que la préservation de ces dons assure et renforce la confiance de nos donateurs envers notre organisation.",
+      conditionsTitle: "Conditions d'adhésion",
+      conditionsText:  "Les conditions d'adhésion au RSC reposent sur le sentiment communautaire, conçu pour renforcer la solidarité au sein de la diaspora. Chaque membre s'engage à :",
+      conditionsItems: [
+        "Participer, à titre volontaire, à l'organisation et au bon fonctionnement du groupe en sympathisant avec les autres membres",
+        'Contribuer à largeur de ses capacités personnelles',
+        "S'associer à largeur de ses conditions à des contributions d'autres membres",
+        'Toute expertise et tout don est constitutif aux services de la communauté',
+        "Après expiration de la période probatoire, le membre est automatiquement éligible à l'ensemble des services RSC dans un esprit équitable et solidaire",
+      ],
+    },
+
+    services: {
+      heroTag:    'RETOUR AUX SOURCES CANADA',
+      heroTitle:  'Nos Services',
+      heroSub:    "Découvrez l'ensemble des services que RSC met à votre disposition pour accompagner chaque membre de la diaspora africaine avec dignité et solidarité.",
+      heroBtn:    'Rejoindre la communauté',
+      introTitle: 'Une plateforme, 10 engagements',
+      introText:  "Retour aux Sources Canada s'engage à offrir un accompagnement complet et humain à chaque étape du processus de rapatriement. Voici les 10 piliers de notre action.",
+      quote:         '« Ensemble, nous pouvons alléger le poids des moments les plus difficiles. »',
+      createAccount: 'Créer un compte',
+      connect:       'Se connecter',
+      items: [
+        {
+          name:  'Assurer',
+          short: 'Protection financière garantie',
+          desc:  "Nous assurons une protection financière complète à chaque membre en cas de décès. La caisse commune RSC prend en charge une partie significative des frais de rapatriement, garantissant que chaque famille soit soutenue dans les moments les plus difficiles.",
+        },
+        {
+          name:  'Donner',
+          short: 'Contributions volontaires solidaires',
+          desc:  "Chaque membre contribue librement à la caisse commune RSC selon ses moyens. Ces dons collectifs forment le fond solidaire qui permet de financer le rapatriement des défunts et de soutenir les familles dans le besoin.",
+        },
+        {
+          name:  'Réunir',
+          short: 'Rassembler la diaspora',
+          desc:  "RSC crée un espace de solidarité où les membres de la diaspora africaine peuvent se retrouver, s'entraider et tisser des liens durables. La force de la communauté réside dans son unité et sa cohésion.",
+        },
+        {
+          name:  'Militer',
+          short: 'Défendre les droits de la diaspora',
+          desc:  "Notre plateforme porte la voix de la diaspora africaine auprès des institutions canadiennes et africaines pour défendre ses droits, faciliter les démarches administratives et promouvoir la dignité de nos communautés.",
+        },
+        {
+          name:  'Appuyer',
+          short: 'Soutien moral et administratif',
+          desc:  "Nos équipes accompagnent les familles dans toutes les démarches administratives liées au rapatriement avec empathie et professionnalisme : actes de décès, laissez-passer mortuaires, liaisons consulaires et bien plus.",
+        },
+        {
+          name:  'Organiser',
+          short: 'Coordination logistique complète',
+          desc:  "De l'obtention des documents officiels jusqu'au transport du défunt vers le pays d'origine, RSC organise chaque étape du processus de rapatriement. Nous travaillons avec des partenaires de confiance pour garantir une prise en charge digne.",
+        },
+        {
+          name:  'Aider',
+          short: 'Assistance directe aux familles',
+          desc:  "Un soutien financier direct est apporté aux familles dans le besoin, puisé dans le fond commun de la communauté. Aucune famille ne devrait faire face seule aux coûts élevés du rapatriement.",
+        },
+        {
+          name:  'Inscrire',
+          short: 'Adhésion simple et sécurisée',
+          desc:  "Rejoignez la communauté RSC en quelques minutes grâce à un processus d'inscription entièrement en ligne, simple et sécurisé. Après validation de votre compte, vous bénéficiez immédiatement de tous les services de la plateforme.",
+        },
+        {
+          name:  'Gérer',
+          short: 'Administration transparente des fonds',
+          desc:  "Tous les fonds collectés sont gérés de manière totalement transparente. Des rapports financiers réguliers sont accessibles à tous les membres, assurant une confiance totale dans la gestion de la caisse commune RSC.",
+        },
+        {
+          name:  'Suivre',
+          short: 'Suivi en temps réel',
+          desc:  "Chaque membre peut suivre en temps réel l'état de son dossier, l'historique de ses contributions et les processus en cours directement depuis son tableau de bord personnalisé, accessible 24h/24 et 7j/7.",
+        },
+      ],
+    },
+
+    contact: {
+      heroTag:      'RETOUR AUX SOURCES CANADA',
+      heroTitle:    'Contactez-nous',
+      heroSub:      "Notre équipe est disponible pour répondre à toutes vos questions. N'hésitez pas à nous écrire ou à nous appeler.",
+      coordTitle:   'Nos coordonnées',
+      coordDesc:    'Nous sommes là pour vous aider. Contactez-nous par téléphone, email ou en remplissant le formulaire ci-contre.',
+      hoursTitle:   "Horaires d'ouverture",
+      hours: [
+        { j: 'Lundi – Vendredi', h: '9h00 – 18h00' },
+        { j: 'Samedi',           h: '10h00 – 14h00' },
+        { j: 'Dimanche',         h: 'Fermé' },
+      ],
+      formTitle:    'Envoyez-nous un message',
+      formDesc:     'Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais.',
+      labelName:    'Nom complet *',
+      labelEmail:   'Email *',
+      labelSubject: 'Sujet *',
+      labelMessage: 'Message *',
+      placeName:    'Votre nom',
+      placeEmail:   'votre@email.com',
+      placeSubject: 'Objet de votre message',
+      placeMessage: 'Décrivez votre demande...',
+      sendBtn:      'Envoyer le message',
+      sending:      'Envoi en cours...',
+      successTitle: 'Message envoyé !',
+      successText:  'Merci pour votre message. Notre équipe vous répondra dans les 24 heures.',
+      anotherMsg:   'Envoyer un autre message',
+      contactInfo: [
+        { label: 'Adresse',   value: '783 rue Jean-François, Suite 1A\nMontréal, QC, H3K 2L2' },
+        { label: 'Téléphone', value: '+1 833 807-0595' },
+        { label: 'Email',     value: 'contact@retauxsources.org' },
+        { label: 'Site web',  value: 'www.retauxsources.org' },
+      ],
+    },
+
+  },
+
+  // ───────────────────────────────────────────────────────────────
+  // ENGLISH
+  // ───────────────────────────────────────────────────────────────
+  en: {
+
+    nav: {
+      home:     'Home',
+      about:    'About',
+      learn:    'Learn+',
+      services: 'Our Services',
+      donate:   'Donate',
+      contact:  'Contact',
+      login:    'Log In',
+      mySpace:  'My Space',
+    },
+
+    footer: {
+      desc:       'Return to Sources Canada is a community platform dedicated to helping members of the African diaspora in Canada with the organization and funding of the repatriation of their deceased to their home country.',
+      quickLinks: 'Quick Links',
+      about:      'About',
+      services:   'Services',
+      donate:     'Donate',
+      login:      'Log In',
+      register:   'Create an Account',
+      contact:    'Contact',
+      copyright:  'Copyright © 2024 RSC — Return to Sources Canada. All rights reserved.',
+    },
+
+    home: {
+      heroTag:      'RETURN TO SOURCES CANADA',
+      heroTitle:    'The solidarity that unites the diaspora even in the most difficult moments',
+      heroSub:      'We support you through every step related to the organization, transparency, and securing of repatriation to your home country. An initiative committed to handling every situation and accompanying families throughout the entire process. Africans in Canada, join our community.',
+      discover:     'Discover',
+      start:        'Get Started',
+      whyTitle:     'Why RSC?',
+      whySubtitle:  'A platform built for the diaspora',
+      whyText1:     'Return to Sources Canada was born from an essential need: to serve members of the African diaspora living in Canada and provide them with support during one of the most difficult moments of their lives.',
+      whyText2:     "Our mission is to simplify the process, reduce costs, and ensure complete dignity throughout the repatriation journey. Every member is part of the RSC community and benefits from services tailored to their situation — with compassion and commitment. The larger our community grows, the greater the chances of meaningful individual financial support.",
+      servicesTitle: 'Our Services',
+      servicesDesc:  'RSC offers a range of services to support members throughout the entire process, allowing everyone to navigate the end-of-life journey of their loved ones with peace of mind.',
+      quote:         '"Because even far from our homelands, our roots deserve respect, dignity, and solidarity."',
+      services: [
+        { name: 'Insure',    desc: 'Protection and guarantees for all members' },
+        { name: 'Give',      desc: 'Voluntary contributions to the community' },
+        { name: 'Unite',     desc: 'Bringing the diaspora together around shared values' },
+        { name: 'Advocate',  desc: 'Defending the rights of the diaspora' },
+        { name: 'Support',   desc: 'Moral and administrative assistance to families' },
+        { name: 'Organize',  desc: 'Logistical coordination of repatriation' },
+        { name: 'Assist',    desc: 'Direct assistance to families in need' },
+        { name: 'Register',  desc: 'Simple and secure membership on the platform' },
+        { name: 'Manage',    desc: 'Transparent administration of collected funds' },
+        { name: 'Track',     desc: 'Real-time tracking of files and donations' },
+      ],
+    },
+
+    about: {
+      heroTag:             'RETURN TO SOURCES CANADA',
+      heroTitle:           'About Us',
+      heroSub:             'Discover who we are, our mission, and our commitments to the African diaspora in Canada.',
+      whatTitle:           'What is RSC?',
+      whatText1:           'Return to Sources Canada (RSC) is a community digital platform created to support members of the African diaspora living in Canada in organizing the repatriation of their deceased to their home country.',
+      whatText2:           'In the event of a death, RSC takes care of each of its members by facilitating the repatriation process to their home country through a compassionate and organized structure. Every member is part of the RSC community and benefits from tailored services — with compassion and commitment.',
+      missionTitle:        'Our Mission',
+      missionText:         'To support the African diaspora in Canada in securing and managing the organization of repatriation to their home country, drawing on community solidarity and adapted digital tools.',
+      missionIntro:        'Our mission is to:',
+      missionItems: [
+        'Simplify the procedures related to repatriation',
+        'Provide clear and traceable follow-up',
+        'Ensure a compassionate and family-respectful approach throughout the process',
+      ],
+      objectivesTitle:     'Our Objectives',
+      objectivesMain:      'Primary Objective:',
+      objectivesMainText:  "To enable the efficient and dignified organization of the repatriation of deceased members of the African diaspora to their home country.",
+      objectivesSecondary: 'Secondary Objectives:',
+      objectivesItems: [
+        "Assist with funeral arrangements in the family's home country",
+        'Secure financial transactions and personal data',
+        'Ensure open and continuous access to multi-platform services',
+        'Foster solidarity and cohesion at the heart of the diaspora',
+      ],
+    },
+
+    learn: {
+      heroTag:         'RETURN TO SOURCES CANADA',
+      heroTitle:       'How RSC Works',
+      heroSub:         'Understand our platform, our integrity values, and the conditions to join our community.',
+      howTitle:        'How Return to Sources (RSC) Works',
+      howText:         'Return to Sources Canada was designed to offer a consistent experience to every member. In the event of a death, the platform guides the family step by step to ensure a smooth, transparent, and respectful process.',
+      howSteps: [
+        {
+          title: 'Registration and Verification',
+          text:  'Each member registers and completes their profile, providing personal information and being directed to the appropriate handling.',
+        },
+        {
+          title: 'Service Selection',
+          text:  'Services tailored to your situation are automatically suggested based on your eligibility, taking into account the consistency of your data.',
+        },
+        {
+          title: 'Protection and Support',
+          text:  'When needed, RSC activates its support system, coordinates administrative procedures, and ensures transparent and secure follow-up.',
+        },
+      ],
+      integrityTitle: 'Integrity and Professionalism',
+      integrityText1: 'Donation funds and member association contributions are used according to strict budgetary rules with complete transparency. RSC does not use personal or external funds belonging to families.',
+      integrityText2: 'We operate under strict principles of financial transparency. RSC does not collect taxes or transaction fees. Every cent is allocated to its intended purpose. We believe that the stewardship of these donations builds and strengthens the trust of our donors in our organization.',
+      conditionsTitle: 'Membership Conditions',
+      conditionsText:  'RSC membership conditions are rooted in community spirit, designed to strengthen solidarity within the diaspora. Each member commits to:',
+      conditionsItems: [
+        'Voluntarily participating in the organization and smooth functioning of the group by engaging with fellow members',
+        'Contributing to the extent of their personal capacity',
+        'Joining others in contributions according to their own circumstances',
+        'Any expertise and any donation contributes to the services of the community',
+        'After the probationary period expires, the member is automatically eligible for all RSC services in a spirit of fairness and solidarity',
+      ],
+    },
+
+    services: {
+      heroTag:    'RETURN TO SOURCES CANADA',
+      heroTitle:  'Our Services',
+      heroSub:    'Discover the full range of services RSC makes available to support every member of the African diaspora with dignity and solidarity.',
+      heroBtn:    'Join the Community',
+      introTitle: 'One Platform, 10 Commitments',
+      introText:  'Return to Sources Canada is committed to providing complete and compassionate support at every stage of the repatriation process. Here are the 10 pillars of our work.',
+      quote:         '"Together, we can lighten the burden of the most difficult moments."',
+      createAccount: 'Create an Account',
+      connect:       'Log In',
+      items: [
+        {
+          name:  'Insure',
+          short: 'Guaranteed financial protection',
+          desc:  'We provide comprehensive financial protection to every member in the event of a death. The RSC common fund covers a significant portion of repatriation costs, ensuring that every family is supported during the most difficult moments.',
+        },
+        {
+          name:  'Give',
+          short: 'Voluntary solidarity contributions',
+          desc:  'Each member contributes freely to the RSC common fund according to their means. These collective donations form the solidarity fund that finances the repatriation of the deceased and supports families in need.',
+        },
+        {
+          name:  'Unite',
+          short: 'Bringing the diaspora together',
+          desc:  'RSC creates a space of solidarity where members of the African diaspora can connect, support one another, and build lasting bonds. The strength of the community lies in its unity and cohesion.',
+        },
+        {
+          name:  'Advocate',
+          short: 'Defending the rights of the diaspora',
+          desc:  'Our platform amplifies the voice of the African diaspora with Canadian and African institutions to defend its rights, facilitate administrative processes, and promote the dignity of our communities.',
+        },
+        {
+          name:  'Support',
+          short: 'Moral and administrative assistance',
+          desc:  'Our teams guide families through all administrative procedures related to repatriation with empathy and professionalism: death certificates, mortuary transit permits, consular liaisons, and much more.',
+        },
+        {
+          name:  'Organize',
+          short: 'Complete logistical coordination',
+          desc:  "From obtaining official documents to transporting the deceased to their home country, RSC manages every step of the repatriation process. We work with trusted partners to guarantee a dignified experience.",
+        },
+        {
+          name:  'Assist',
+          short: 'Direct assistance to families',
+          desc:  'Direct financial support is provided to families in need, drawn from the community common fund. No family should face the high costs of repatriation alone.',
+        },
+        {
+          name:  'Register',
+          short: 'Simple and secure membership',
+          desc:  "Join the RSC community in just a few minutes through a fully online, simple and secure registration process. After your account is validated, you immediately benefit from all of the platform's services.",
+        },
+        {
+          name:  'Manage',
+          short: 'Transparent fund administration',
+          desc:  'All collected funds are managed with complete transparency. Regular financial reports are accessible to all members, ensuring total confidence in the management of the RSC common fund.',
+        },
+        {
+          name:  'Track',
+          short: 'Real-time tracking',
+          desc:  'Each member can monitor in real time the status of their file, the history of their contributions, and ongoing processes directly from their personalized dashboard, accessible 24/7.',
+        },
+      ],
+    },
+
+    contact: {
+      heroTag:      'RETURN TO SOURCES CANADA',
+      heroTitle:    'Contact Us',
+      heroSub:      'Our team is available to answer all your questions. Feel free to write to us or give us a call.',
+      coordTitle:   'Our Contact Details',
+      coordDesc:    'We are here to help. Reach us by phone, email, or by filling out the form on the right.',
+      hoursTitle:   'Business Hours',
+      hours: [
+        { j: 'Monday – Friday', h: '9:00 AM – 6:00 PM' },
+        { j: 'Saturday',        h: '10:00 AM – 2:00 PM' },
+        { j: 'Sunday',          h: 'Closed' },
+      ],
+      formTitle:    'Send Us a Message',
+      formDesc:     'Fill out the form below and we will get back to you as soon as possible.',
+      labelName:    'Full Name *',
+      labelEmail:   'Email *',
+      labelSubject: 'Subject *',
+      labelMessage: 'Message *',
+      placeName:    'Your name',
+      placeEmail:   'your@email.com',
+      placeSubject: 'Subject of your message',
+      placeMessage: 'Describe your request...',
+      sendBtn:      'Send Message',
+      sending:      'Sending...',
+      successTitle: 'Message Sent!',
+      successText:  'Thank you for your message. Our team will get back to you within 24 hours.',
+      anotherMsg:   'Send Another Message',
+      contactInfo: [
+        { label: 'Address', value: '783 rue Jean-François, Suite 1A\nMontréal, QC, H3K 2L2' },
+        { label: 'Phone',   value: '+1 833 807-0595' },
+        { label: 'Email',   value: 'contact@retauxsources.org' },
+        { label: 'Website', value: 'www.retauxsources.org' },
+      ],
+    },
+
+  },
+};
+
+export default translations;

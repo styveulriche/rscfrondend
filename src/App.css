@@ -964,6 +964,45 @@ body {
   flex: 1;
 }
 
+.profile-reminder {
+  background: var(--pink-ultra-light);
+  border: 1px solid var(--pink-light);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 20px 30px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.profile-reminder-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0 0 4px;
+}
+
+.profile-reminder-text {
+  font-size: 13px;
+  margin: 0;
+  color: var(--text-gray);
+}
+
+.profile-reminder-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-reminder .btn-small {
+  background: white;
+  color: var(--red-primary);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
 /* ===== STATS CARDS ===== */
 .stats-row {
   display: grid;
@@ -1009,6 +1048,12 @@ body {
   font-size: 13px;
   color: rgba(255,255,255,0.9);
   margin-bottom: 10px;
+}
+
+.probation-note {
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+  margin: 0 auto 8px;
 }
 
 .probation-timer {
@@ -1778,6 +1823,7 @@ body {
   .dashboard-main     { margin-left: 0; }
   .dashboard-toggle   { display: block; }
   .dashboard-content  { padding: 20px; }
+  .profile-reminder   { margin: 16px 20px 0; }
 
   /* Stats : 2 colonnes sur tablette */
   .stats-row          { grid-template-columns: repeat(2, 1fr); }
@@ -1834,6 +1880,7 @@ body {
   .dashboard-header   { padding: 14px 16px; }
   .header-username    { display: none; }
   .dashboard-content  { padding: 14px; }
+  .profile-reminder   { margin: 12px 14px 0; flex-direction: column; align-items: flex-start; }
 
   /* Stats */
   .stats-row          { grid-template-columns: 1fr; gap: 10px; }

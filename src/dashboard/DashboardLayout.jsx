@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FaChartBar, FaWallet, FaHandHoldingHeart, FaUsers, FaUserFriends,
@@ -26,22 +26,63 @@ const menuBottom = [
   { path: 'parametres',    label: 'Paramètres',    Icon: FaCog },
 ];
 
+const PROFILE_REMINDER_KEY = 'rsc_profile_prompt_v1';
+
+const isProfileIncomplete = (user) => {
+  if (!user) return false;
+  const required = [
+    user.telephone,
+    user.paysOrigine,
+    user.statutDiaspora,
+    user.dateNaissance,
+  ];
+  return required.some((value) => !value);
+};
+
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAdmin, isSuperAdmin } = useAuth();
   const currentPath = location.pathname.split('/').pop();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showProfileReminder, setShowProfileReminder] = useState(false);
 
   const displayName = user?.nomComplet
     || [user?.prenom, user?.nom].filter(Boolean).join(' ')
     || user?.email
     || 'Utilisateur';
   const avatar = user?.photoProfile || user?.avatar || null;
+  const reminderKey = user?.id ? `${PROFILE_REMINDER_KEY}_${user.id}` : null;
+  const shouldPromptProfile = isProfileIncomplete(user);
+
+  useEffect(() => {
+    if (!reminderKey || !shouldPromptProfile) {
+      setShowProfileReminder(false);
+      return;
+    }
+    const alreadySeen = localStorage.getItem(reminderKey);
+    setShowProfileReminder(!alreadySeen);
+  }, [reminderKey, shouldPromptProfile]);
+
+  const markReminderSeen = useCallback(() => {
+    if (reminderKey) {
+      localStorage.setItem(reminderKey, new Date().toISOString());
+    }
+    setShowProfileReminder(false);
+  }, [reminderKey]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleOpenProfile = () => {
+    markReminderSeen();
+    navigate('/dashboard/parametres');
+  };
+
+  const handleProfileLater = () => {
+    markReminderSeen();
   };
 
   const computedMenuItems = useMemo(() => {
@@ -129,6 +170,25 @@ function DashboardLayout() {
             </div>
           </div>
         </header>
+
+        {showProfileReminder && (
+          <div className="profile-reminder">
+            <div>
+              <p className="profile-reminder-title">Bienvenue {user?.prenom || user?.nom || ''} !</p>
+              <p className="profile-reminder-text">
+                Complétez votre profil pour activer tous les services RSC avant de poursuivre votre navigation.
+              </p>
+            </div>
+            <div className="profile-reminder-actions">
+              <button type="button" className="btn-small" onClick={handleProfileLater}>
+                Plus tard
+              </button>
+              <button type="button" className="btn-add" onClick={handleOpenProfile}>
+                Mettre à jour mon profil
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="dashboard-content">
           <Outlet />

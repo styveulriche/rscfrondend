@@ -15,13 +15,17 @@ import { REALTIME_INTERVALS } from '../config/realtime';
 
 const MAX = 5;
 const CATEGORIES = [
-  { value: '',              label: '-- Catégorie (optionnel) --' },
-  { value: 'mineur',        label: 'Mineur' },
-  { value: 'troisieme_age', label: 'Personne du 3e âge' },
-  { value: 'malade_infirme',label: 'Personne malade ou infirme' },
+  { value: '',                label: '-- Catégorie (optionnel) --' },
+  { value: 'MINEUR',          label: 'Mineur' },
+  { value: 'TROISIEME_AGE',   label: 'Personne du 3e âge' },
+  { value: 'MALADE_INFIRME',  label: 'Personne malade ou infirme' },
 ];
 
-const categoryLabel = (val) => CATEGORIES.find((c) => c.value === val)?.label || '';
+const categoryLabel = (val) => {
+  if (!val) return '';
+  const normalized = String(val).toUpperCase();
+  return CATEGORIES.find((c) => c.value === normalized)?.label || '';
+};
 
 const EMPTY_FORM = { name: '', phone: '', idFile: null, categorie: '' };
 

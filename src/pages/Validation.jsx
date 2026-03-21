@@ -129,10 +129,12 @@ function Validation() {
             <select style={inputStyle} value={form2.status}
               onChange={(e) => setForm2({ ...form2, status: e.target.value })} required>
               <option value="">-- Statut au Canada --</option>
-              <option value="resident_permanent">Résident permanent</option>
-              <option value="travailleur_temporaire">Travailleur temporaire</option>
-              <option value="visiteur">Visiteur</option>
-              <option value="etudiant">Étudiant</option>
+              <option value="RESIDENT_PERMANENT">Résident permanent</option>
+              <option value="TRAVAILLEUR_TEMPORAIRE">Travailleur temporaire</option>
+              <option value="VISITEUR_LONG_SEJOUR">Visiteur long séjour</option>
+              <option value="ETUDIANT_INTERNATIONAL">Étudiant international</option>
+              <option value="CITOYEN_CANADIEN">Citoyen canadien</option>
+              <option value="REFUGIE">Réfugié</option>
             </select>
             <button type="submit" className="btn-validation">Continuer</button>
           </form>

@@ -7,11 +7,11 @@ import api from '../services/api';
 
 const STATUT_DIASPORA_OPTIONS = [
   { value: 'RESIDENT_PERMANENT', label: 'Résident permanent' },
-  { value: 'CITOYEN', label: 'Citoyen canadien' },
-  { value: 'ETUDIANT', label: 'Étudiant' },
-  { value: 'TRAVAILLEUR', label: 'Travailleur' },
-  { value: 'VISITEUR', label: 'Visiteur' },
-  { value: 'INVESTISSEUR', label: 'Investisseur' },
+  { value: 'CITOYEN_CANADIEN', label: 'Citoyen canadien' },
+  { value: 'ETUDIANT_INTERNATIONAL', label: 'Étudiant international' },
+  { value: 'TRAVAILLEUR_TEMPORAIRE', label: 'Travailleur temporaire' },
+  { value: 'VISITEUR_LONG_SEJOUR', label: 'Visiteur long séjour' },
+  { value: 'REFUGIE', label: 'Réfugié' },
 ];
 
 const PAYS_OPTIONS = [

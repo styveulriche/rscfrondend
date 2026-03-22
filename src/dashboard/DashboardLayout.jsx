@@ -1,20 +1,22 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FaChartBar, FaWallet, FaHandHoldingHeart, FaUsers, FaUserFriends,
   FaExclamationCircle, FaSearch, FaEnvelope, FaBell, FaCog,
   FaSignOutAlt, FaUserCircle, FaBars, FaTimes, FaMapMarkerAlt,
-  FaUserShield, FaUsersCog, FaClipboardList,
+  FaUserShield, FaUsersCog, FaClipboardList, FaLock, FaExclamationTriangle,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { getUnreadCount } from '../services/notifications';
+import { isProfileIncomplete } from '../components/PrivateRoute';
 
 const baseMenuItems = [
   { path: 'statistiques',  label: 'Statistiques',            Icon: FaChartBar },
   { path: 'finances',      label: 'Finances',                Icon: FaWallet },
   { path: 'don',           label: 'Faire un don',            Icon: FaHandHoldingHeart },
   { path: 'adresses',      label: 'Adresses',                Icon: FaMapMarkerAlt },
-  { path: 'ayant-droit',   label: 'Mes ayants droit',        Icon: FaUsers },
-  { path: 'parrainage',    label: 'Parrainage & références', Icon: FaUserFriends },
+  { path: 'ayant-droit',   label: 'Mes ayants droit',        Icon: FaUsers,   userOnly: true },
+  { path: 'parrainage',    label: 'Parrainage & références', Icon: FaUserFriends, userOnly: true },
   { path: 'signaler',      label: 'Signaler événement',      Icon: FaExclamationCircle },
   { path: 'suivi',         label: 'Suivi',                   Icon: FaSearch },
 ];
@@ -26,84 +28,91 @@ const menuBottom = [
   { path: 'parametres',    label: 'Paramètres',    Icon: FaCog },
 ];
 
-const PROFILE_REMINDER_KEY = 'rsc_profile_prompt_v1';
-
-const isProfileIncomplete = (user) => {
-  if (!user) return false;
-  const required = [
-    user.telephone,
-    user.paysOrigine,
-    user.statutDiaspora,
-    user.dateNaissance,
-  ];
-  return required.some((value) => !value);
-};
 
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAdmin, isSuperAdmin } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin, hasRole } = useAuth();
   const currentPath = location.pathname.split('/').pop();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showProfileReminder, setShowProfileReminder] = useState(false);
+  const profileLocked = !isAdmin && isProfileIncomplete(user);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchUnread = async () => {
+      try {
+        const res = await getUnreadCount();
+        if (typeof res === 'number') {
+          setUnreadCount(res);
+        } else if (res && typeof res === 'object') {
+          const values = Object.values(res);
+          setUnreadCount(values.length > 0 ? values[0] : 0);
+        }
+      } catch {
+        // silencieux
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 20000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const displayName = user?.nomComplet
     || [user?.prenom, user?.nom].filter(Boolean).join(' ')
     || user?.email
     || 'Utilisateur';
   const avatar = user?.photoProfile || user?.avatar || null;
-  const reminderKey = user?.id ? `${PROFILE_REMINDER_KEY}_${user.id}` : null;
-  const shouldPromptProfile = isProfileIncomplete(user);
-
-  useEffect(() => {
-    if (!reminderKey || !shouldPromptProfile) {
-      setShowProfileReminder(false);
-      return;
-    }
-    const alreadySeen = localStorage.getItem(reminderKey);
-    setShowProfileReminder(!alreadySeen);
-  }, [reminderKey, shouldPromptProfile]);
-
-  const markReminderSeen = useCallback(() => {
-    if (reminderKey) {
-      localStorage.setItem(reminderKey, new Date().toISOString());
-    }
-    setShowProfileReminder(false);
-  }, [reminderKey]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const handleOpenProfile = () => {
-    markReminderSeen();
-    navigate('/dashboard/parametres');
-  };
-
-  const handleProfileLater = () => {
-    markReminderSeen();
-  };
+  // Role-based menu visibility for admins
+  const ADMIN_ROLES_FOR = useMemo(() => Object.freeze({
+    finances:               ['SUPER_ADMIN', 'ADMIN_FINANCIER'],
+    don:                    ['SUPER_ADMIN', 'ADMIN_FINANCIER'],
+    adresses:               [],  // admins don't need addresses
+    signaler:               ['SUPER_ADMIN', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'MODERATEUR'],
+    suivi:                  ['SUPER_ADMIN', 'ADMIN_FINANCIER', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR', 'MODERATEUR'],
+    statistiques:           ['SUPER_ADMIN', 'ADMIN_FINANCIER', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR', 'MODERATEUR'],
+    declarations:           ['SUPER_ADMIN', 'ADMIN_VALIDATEUR'],
+    'gestion-utilisateurs': ['SUPER_ADMIN', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR'],
+    administrateurs:        ['SUPER_ADMIN'],
+  }), []);
 
   const computedMenuItems = useMemo(() => {
-    const items = [...baseMenuItems];
-    if (isAdmin) {
-      const adminLinks = [
-        { path: 'declarations', label: 'Déclarations', Icon: FaClipboardList },
-        { path: 'gestion-utilisateurs', label: 'Gestion utilisateurs', Icon: FaUsersCog },
-      ];
-      if (isSuperAdmin) {
-        adminLinks.push({ path: 'administrateurs', label: 'Gestion administrateurs', Icon: FaUserShield });
-      }
-      const insertIndex = items.findIndex((item) => item.path === 'signaler');
-      if (insertIndex >= 0) {
-        items.splice(insertIndex, 0, ...adminLinks);
-      } else {
-        items.push(...adminLinks);
-      }
+    if (!isAdmin) {
+      return baseMenuItems;
     }
-    return items;
-  }, [isAdmin, isSuperAdmin]);
+
+    // For admins: filter base items by role, exclude userOnly
+    const allowedBase = baseMenuItems.filter((item) => {
+      if (item.userOnly) return false;
+      const allowed = ADMIN_ROLES_FOR[item.path];
+      if (!allowed) return true; // no restriction defined → show to all admins
+      if (allowed.length === 0) return false; // explicitly hidden for all admins
+      return hasRole(allowed);
+    });
+
+    const adminLinks = [];
+    if (hasRole(ADMIN_ROLES_FOR['declarations'])) {
+      adminLinks.push({ path: 'declarations', label: 'Déclarations', Icon: FaClipboardList });
+    }
+    if (hasRole(ADMIN_ROLES_FOR['gestion-utilisateurs'])) {
+      adminLinks.push({ path: 'gestion-utilisateurs', label: 'Gestion utilisateurs', Icon: FaUsersCog });
+    }
+    if (isSuperAdmin) {
+      adminLinks.push({ path: 'administrateurs', label: 'Gestion administrateurs', Icon: FaUserShield });
+    }
+
+    const insertIndex = allowedBase.findIndex((item) => item.path === 'signaler');
+    if (insertIndex >= 0) {
+      return [...allowedBase.slice(0, insertIndex), ...adminLinks, ...allowedBase.slice(insertIndex)];
+    }
+    return [...allowedBase, ...adminLinks];
+  }, [isAdmin, isSuperAdmin, hasRole, ADMIN_ROLES_FOR]);
 
   return (
     <div className="dashboard-page">
@@ -124,23 +133,43 @@ function DashboardLayout() {
         <ul className="sidebar-menu">
           {computedMenuItems.map(({ path, label, Icon }) => (
             <li key={path}>
-              <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
-                onClick={() => setSidebarOpen(false)}>
-                <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
-                {label}
-              </Link>
+              {profileLocked ? (
+                <span style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', opacity: 0.4, cursor: 'not-allowed', fontSize: 14 }}>
+                  <Icon size={15} style={{ marginRight: 10, flexShrink: 0 }} />
+                  {label}
+                  <FaLock size={10} style={{ marginLeft: 'auto' }} />
+                </span>
+              ) : (
+                <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
+                  onClick={() => setSidebarOpen(false)}>
+                  <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
+                  {label}
+                </Link>
+              )}
             </li>
           ))}
           <li><div className="sidebar-divider" /></li>
-          {menuBottom.map(({ path, label, Icon }) => (
-            <li key={path}>
-              <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
-                onClick={() => setSidebarOpen(false)}>
-                <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
-                {label}
-              </Link>
-            </li>
-          ))}
+          {menuBottom.map(({ path, label, Icon }) => {
+            const isParametres = path === 'parametres';
+            const locked = profileLocked && !isParametres;
+            return (
+              <li key={path}>
+                {locked ? (
+                  <span style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', opacity: 0.4, cursor: 'not-allowed', fontSize: 14 }}>
+                    <Icon size={15} style={{ marginRight: 10, flexShrink: 0 }} />
+                    {label}
+                    <FaLock size={10} style={{ marginLeft: 'auto' }} />
+                  </span>
+                ) : (
+                  <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
+                    onClick={() => setSidebarOpen(false)}>
+                    <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
+                    {label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         <div className="sidebar-bottom">
@@ -157,8 +186,19 @@ function DashboardLayout() {
             {sidebarOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
           </button>
           <div style={{ flex: 1 }} />
-          <Link to="/dashboard/notifications" style={{ textDecoration: 'none' }}>
+          <Link to="/dashboard/notifications" style={{ textDecoration: 'none', position: 'relative', display: 'inline-flex' }}>
             <FaBell size={20} style={{ color: 'var(--text-gray)', cursor: 'pointer' }} />
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -6, right: -6,
+                background: 'var(--red-primary)', color: 'white',
+                borderRadius: '50%', width: 16, height: 16,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700, lineHeight: 1,
+              }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </Link>
           <div className="header-user">
             <span className="header-username">{displayName}</span>
@@ -171,22 +211,20 @@ function DashboardLayout() {
           </div>
         </header>
 
-        {showProfileReminder && (
-          <div className="profile-reminder">
-            <div>
-              <p className="profile-reminder-title">Bienvenue {user?.prenom || user?.nom || ''} !</p>
-              <p className="profile-reminder-text">
-                Complétez votre profil pour activer tous les services RSC avant de poursuivre votre navigation.
-              </p>
-            </div>
-            <div className="profile-reminder-actions">
-              <button type="button" className="btn-small" onClick={handleProfileLater}>
-                Plus tard
-              </button>
-              <button type="button" className="btn-add" onClick={handleOpenProfile}>
-                Mettre à jour mon profil
-              </button>
-            </div>
+        {profileLocked && (
+          <div style={{
+            background: 'linear-gradient(135deg, #8B1C1C, #C44040)',
+            color: 'white',
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}>
+            <FaExclamationTriangle size={16} style={{ flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: 13, flex: 1 }}>
+              <strong>Profil incomplet.</strong> Veuillez renseigner vos informations pour accéder à toutes les fonctionnalités RSC.
+            </p>
           </div>
         )}
 

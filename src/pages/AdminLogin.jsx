@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 function AdminLogin() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { loginAdmin } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,10 +18,7 @@ function AdminLogin() {
     setError('');
     setLoading(true);
     try {
-      await login(
-        { email: form.email, motDePasse: form.password },
-        { requireAdmin: true },
-      );
+      await loginAdmin({ email: form.email, motDePasse: form.password });
       navigate('/dashboard/gestion-utilisateurs', { replace: true });
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Impossible de vous authentifier en tant que gestionnaire.';

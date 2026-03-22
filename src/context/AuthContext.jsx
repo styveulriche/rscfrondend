@@ -8,12 +8,18 @@ import {
 } from '../services/auth';
 import { getProfile } from '../services/users';
 import { getAdmin } from '../services/administrateurs';
-import { paymentsStats } from '../services/paiements';
+import { myTotal } from '../services/paiements';
+import { mesDonsTotal } from '../services/dons';
 
 const AuthContext = createContext(null);
 
 const ADMIN_ROLE_KEYS = Object.freeze([
   'SUPER_ADMIN',
+  'ADMIN_VALIDATEUR',
+  'ADMIN_CONTENU',
+  'ADMIN_SUPPORT',
+  'ADMIN_FINANCIER',
+  'MODERATEUR',
   'ADMIN',
   'ADMINISTRATEUR',
   'GESTIONNAIRE',
@@ -60,6 +66,14 @@ const hasRoleFromList = (roles, allowed = ADMIN_ROLE_KEYS) => {
   return roles.some((role) => normalizedAllowed.includes(role));
 };
 
+const shouldFallbackToAdmin = (error) => {
+  if (!error || !error.response) return false;
+  const { status } = error.response;
+  if (status === 404) return true;
+  const message = (error.response.data?.message || error.message || '').toLowerCase();
+  return message.includes('non trouvé') || message.includes('not found');
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('rsc_user');
@@ -75,17 +89,42 @@ export function AuthProvider({ children }) {
       return 0;
     }
     try {
-      const stats = await paymentsStats({ utilisateurId: targetId });
-      const raw = stats?.soldeActuel ?? stats?.currentBalance ?? stats?.balance ?? stats?.solde ?? stats?.montantDisponible;
-      const value = Number(raw);
-      const normalized = Number.isFinite(value) ? value : 0;
-      setBalance(normalized);
-      return normalized;
+      // Priorité 1 : profil utilisateur (champ solde direct)
+      const profile = await getProfile(targetId);
+      const profileBalance = profile?.solde ?? profile?.balance ?? profile?.montantDisponible ?? profile?.soldePortefeuille;
+      if (typeof profileBalance === 'number' && Number.isFinite(profileBalance)) {
+        setBalance(profileBalance);
+        return profileBalance;
+      }
+
+      // Priorité 2 : total reçu - total dons
+      const extractNum = (obj) => {
+        if (!obj) return 0;
+        if (typeof obj === 'number') return obj;
+        const v = obj.totalDons ?? obj.total ?? obj.montant ?? obj.montantTotal
+          ?? Object.values(obj).find((x) => typeof x === 'number');
+        return Number.isFinite(Number(v)) ? Number(v) : 0;
+      };
+
+      const [receivedRes, donsRes] = await Promise.allSettled([myTotal(), mesDonsTotal()]);
+      const received = receivedRes.status === 'fulfilled' ? extractNum(receivedRes.value) : 0;
+      const donated = donsRes.status === 'fulfilled' ? extractNum(donsRes.value) : 0;
+      const computed = Math.max(0, received - donated);
+      setBalance(computed);
+      return computed;
     } catch (err) {
       console.error('Erreur lors de la récupération du solde utilisateur', err);
       return 0;
     }
   }, [user?.id]);
+
+  // Mise à jour optimiste : incrémente immédiatement le solde affiché
+  // puis synchronise avec le serveur en arrière-plan
+  const addToBalance = useCallback((amount) => {
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value === 0) return;
+    setBalance((prev) => Math.max(0, prev + value));
+  }, []);
 
   const persistTokens = ({ token, accessToken, refreshToken }) => {
     const t = token || accessToken;
@@ -104,91 +143,73 @@ export function AuthProvider({ children }) {
     setUser(enriched);
   };
 
+  const finalizeAuth = useCallback(async (payload, options = {}) => {
+    if (!payload) {
+      throw new Error('Réponse d\'authentification invalide.');
+    }
+    persistTokens(payload);
+
+    let profile = null;
+    if (payload?.id) {
+      try {
+        profile = await getProfile(payload.id);
+      } catch {
+        try {
+          profile = await getAdmin(payload.id);
+        } catch {
+          profile = null;
+        }
+      }
+    }
+
+    const normalized = withRoleMetadata(profile ?? payload);
+    const allowedRoles = options.allowedRoles?.length ? options.allowedRoles : ADMIN_ROLE_KEYS;
+    if (options.requireAdmin && !hasRoleFromList(normalized.roles, allowedRoles)) {
+      clearTokens();
+      localStorage.removeItem('rsc_user');
+      setUser(null);
+      setBalance(0);
+      throw new Error(options.adminErrorMessage || 'Accès administrateur refusé.');
+    }
+
+    persistUser(normalized);
+    if (normalized?.id) await refreshBalance(normalized.id);
+    return normalized;
+  }, [refreshBalance]);
+
   const login = async (credentials, options = {}) => {
     try {
-      // Essai connexion utilisateur, puis admin si non trouvé
       let data;
       try {
         data = await loginService(credentials);
       } catch (err) {
-        const msg = err?.response?.data?.message || '';
-        if (err?.response?.status === 404 || msg.toLowerCase().includes('non trouvé') || msg.toLowerCase().includes('not found')) {
+        if (shouldFallbackToAdmin(err)) {
           data = await adminLoginService(credentials);
         } else {
           throw err;
         }
       }
+      return finalizeAuth(data, options);
+    } catch (err) {
+      throw err;
+    }
+  };
 
-      persistTokens(data);
-
-      if (data?.id) {
-        // Récupérer le profil : d'abord utilisateur, sinon administrateur
-        let profile = null;
-        try {
-          profile = await getProfile(data.id);
-        } catch {
-          try {
-            profile = await getAdmin(data.id);
-          } catch {
-            profile = null;
-          }
-        }
-
-        const source = profile ?? data;
-        const normalized = withRoleMetadata(source);
-        const allowedRoles = options.allowedRoles?.length ? options.allowedRoles : ADMIN_ROLE_KEYS;
-        if (options.requireAdmin && !hasRoleFromList(normalized.roles, allowedRoles)) {
-          clearTokens();
-          localStorage.removeItem('rsc_user');
-          setUser(null);
-          setBalance(0);
-          throw new Error('Accès administrateur refusé.');
-        }
-        persistUser(normalized);
-        await refreshBalance(normalized.id);
-        return normalized;
-      }
-
-      const normalized = withRoleMetadata(data);
-      if (options.requireAdmin && !hasRoleFromList(normalized.roles)) {
-        clearTokens();
-        localStorage.removeItem('rsc_user');
-        setUser(null);
-        setBalance(0);
-        throw new Error('Accès administrateur refusé.');
-      }
-      persistUser(normalized);
-      if (normalized?.id) await refreshBalance(normalized.id);
-      return normalized;
+  const loginAdmin = async (credentials, options = {}) => {
+    try {
+      const data = await adminLoginService(credentials, { xForwardedFor: options.xForwardedFor });
+      return await finalizeAuth(data, {
+        ...options,
+        requireAdmin: true,
+        adminErrorMessage: 'Votre rôle ne permet pas d\'accéder à cet espace.',
+      });
     } catch (err) {
       throw err;
     }
   };
 
   // Called after MFA verification succeeds — receives a full JwtResponse
-  const completeLogin = useCallback(async (data) => {
-    persistTokens(data);
-    if (data?.id) {
-      let profile = null;
-      try {
-        profile = await getProfile(data.id);
-      } catch {
-        try {
-          profile = await getAdmin(data.id);
-        } catch {
-          profile = null;
-        }
-      }
-      const normalized = withRoleMetadata(profile ?? data);
-      persistUser(normalized);
-      await refreshBalance(normalized.id);
-      return normalized;
-    }
-    const normalized = withRoleMetadata(data);
-    persistUser(normalized);
-    if (normalized?.id) await refreshBalance(normalized.id);
-    return normalized;
-  }, [refreshBalance]);
+  const completeLogin = useCallback((data, options = {}) => finalizeAuth(data, options), [finalizeAuth]);
 
   const register = async (payload) => {
     try {
@@ -216,9 +237,12 @@ export function AuthProvider({ children }) {
         if (parsed?.id) {
           try {
             const profile = await getProfile(parsed.id);
-            setUser(profile);
-            localStorage.setItem('rsc_user', JSON.stringify(profile));
-            await refreshBalance(profile.id);
+            // Fusionner : données sauvegardées + retour backend
+            // Les champs du profil complété (telephone, paysOrigine, etc.) ne sont jamais perdus
+            const merged = withRoleMetadata({ ...parsed, ...profile });
+            setUser(merged);
+            localStorage.setItem('rsc_user', JSON.stringify(merged));
+            await refreshBalance(merged.id);
           } catch (err) {
             setUser(parsed);
             await refreshBalance(parsed.id);
@@ -259,8 +283,11 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
+    if (!user?.id) return;
     refreshBalance();
-  }, [refreshBalance]);
+    const timer = setInterval(() => refreshBalance(), 20000);
+    return () => clearInterval(timer);
+  }, [refreshBalance, user?.id]);
 
   const userRoles = useMemo(() => (user?.roles ? user.roles : extractRoles(user)), [user]);
   const isAdmin = useMemo(() => hasRoleFromList(userRoles), [userRoles]);
@@ -277,12 +304,14 @@ export function AuthProvider({ children }) {
       value={{
         user,
         login,
+        loginAdmin,
         completeLogin,
         register,
         logout,
         updateUser,
         balance,
         refreshBalance,
+        addToBalance,
         loading,
         roles: userRoles,
         isAdmin,

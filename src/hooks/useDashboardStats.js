@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useRealtimeResource } from './useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats } from '../services/paiements';
+import { myTotal } from '../services/paiements';
+import { mesDonsTotal } from '../services/dons';
 import { countByUser as countAyantsByUser } from '../services/ayantsDroit';
 import { listParrainagesByParrain } from '../services/parrainages';
 
@@ -22,32 +23,45 @@ const normalizeNumber = (value, fallback = 0) => {
   return fallback;
 };
 
+const extractNum = (obj) => {
+  if (!obj) return 0;
+  if (typeof obj === 'number') return obj;
+  const v = obj.totalDons ?? obj.total ?? obj.montant ?? obj.montantTotal
+    ?? obj.totalPaiements ?? obj.totalEncaisse
+    ?? Object.values(obj).find((x) => typeof x === 'number');
+  return Number.isFinite(Number(v)) ? Number(v) : 0;
+};
+
+const extractCount = (obj) => {
+  if (!obj) return 0;
+  if (typeof obj === 'number') return obj;
+  const v = obj.nombreDons ?? obj.count ?? obj.nombre ?? obj.nbr
+    ?? Object.values(obj).filter((x) => typeof x === 'number')[1];
+  return Number.isFinite(Number(v)) ? Number(v) : 0;
+};
+
 export function useDashboardStats(userId) {
   const fetcher = useCallback(async () => {
     if (!userId) return DEFAULT_STATS;
 
-    const [paymentsResult, ayantsResult, parrainagesResult] = await Promise.allSettled([
-      paymentsStats({ utilisateurId: userId }),
+    const [totalResult, donsResult, ayantsResult, parrainagesResult] = await Promise.allSettled([
+      myTotal(),
+      mesDonsTotal(),
       countAyantsByUser(userId),
       listParrainagesByParrain(userId, { page: 0, size: 1, sort: 'createdAt,desc' }),
     ]);
 
-    const payments = paymentsResult.status === 'fulfilled' ? paymentsResult.value : null;
-    const ayants = ayantsResult.status === 'fulfilled' ? ayantsResult.value : null;
+    const totalData  = totalResult.status  === 'fulfilled' ? totalResult.value  : null;
+    const donsData   = donsResult.status   === 'fulfilled' ? donsResult.value   : null;
+    const ayants     = ayantsResult.status === 'fulfilled' ? ayantsResult.value : null;
     const parrainages = parrainagesResult.status === 'fulfilled' ? parrainagesResult.value : null;
 
-    const balance = normalizeNumber(
-      payments?.soldeActuel ?? payments?.currentBalance ?? payments?.balance ?? payments?.solde,
-      0,
-    );
-    const donationsTotal = normalizeNumber(
-      payments?.montantTotal ?? payments?.totalAmount ?? payments?.montant ?? payments?.total,
-      0,
-    );
-    const donationsCount = normalizeNumber(
-      payments?.nombreTransactions ?? payments?.transactions ?? payments?.count ?? payments?.totalTransactions,
-      0,
-    );
+    const received      = extractNum(totalData);
+    const donationsTotal = extractNum(donsData);
+    const donationsCount = extractCount(donsData);
+
+    // Solde net = total reçu − total donné (min 0)
+    const balance = Math.max(0, received - donationsTotal);
 
     const ayantsCount = normalizeNumber(
       ayants?.count ?? ayants?.total ?? ayants,
@@ -68,13 +82,7 @@ export function useDashboardStats(userId) {
       }
     }
 
-    return {
-      balance,
-      donationsTotal,
-      donationsCount,
-      ayantsCount,
-      parrainagesCount,
-    };
+    return { balance, donationsTotal, donationsCount, ayantsCount, parrainagesCount };
   }, [userId]);
 
   const resource = useRealtimeResource(
@@ -86,6 +94,13 @@ export function useDashboardStats(userId) {
       interval: REALTIME_INTERVALS.dashboardStats,
     },
   );
+
+  // Écoute l'événement global déclenché après chaque débit pour forcer un refresh immédiat
+  useEffect(() => {
+    const handler = () => resource.refresh();
+    window.addEventListener('rsc:stats-refresh', handler);
+    return () => window.removeEventListener('rsc:stats-refresh', handler);
+  }, [resource.refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return useMemo(() => ({
     ...resource,

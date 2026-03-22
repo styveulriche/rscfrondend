@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaShieldAlt } from 'react-icons/fa';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { isProfileIncomplete } from '../components/PrivateRoute';
+import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import { updateUser as updateUserService } from '../services/users';
@@ -22,6 +24,9 @@ const PAYS_OPTIONS = [
 
 function Parametres() {
   const { user, updateUser } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const profileRequired = location.state?.profileRequired === true;
 
   const [profile, setProfile] = useState({
     nom: '',
@@ -74,7 +79,24 @@ function Parametres() {
         sexe: profile.sexe || null,
       };
       const updated = await updateUserService(user.id, payload);
-      updateUser(updated);
+      // Fusionner : réponse backend + données du formulaire comme fallback garanti
+      const mergedUser = { ...user, ...updated, ...payload };
+      updateUser(mergedUser);
+      // Vérifier la complétude sur les valeurs du formulaire (source fiable)
+      const formComplete = !!(
+        profile.telephone &&
+        profile.paysOrigine &&
+        profile.statutDiaspora &&
+        profile.dateNaissance
+      );
+      if (formComplete) {
+        // Marquer définitivement le profil comme complété pour les prochaines connexions
+        localStorage.setItem('rsc_profile_completed', String(user.id));
+      }
+      if (formComplete && profileRequired) {
+        navigate('/dashboard/statistiques', { replace: true, state: { profileJustCompleted: true } });
+        return;
+      }
       setProfileStatus({ type: 'success', message: 'Profil mis à jour avec succès.' });
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erreur lors de la mise à jour.';
@@ -121,6 +143,29 @@ function Parametres() {
   return (
     <div>
       <StatsRow />
+
+      {profileRequired && (
+        <div style={{
+          background: 'rgba(139,28,28,0.08)',
+          border: '1px solid rgba(139,28,28,0.25)',
+          borderRadius: 10,
+          padding: '14px 18px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+        }}>
+          <FaExclamationTriangle size={16} color="var(--red-primary)" style={{ marginTop: 2, flexShrink: 0 }} />
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--red-primary)' }}>
+              Complétez votre profil pour continuer
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-gray)' }}>
+              Les champs <strong>téléphone</strong>, <strong>pays d'origine</strong>, <strong>statut diaspora</strong> et <strong>date de naissance</strong> sont requis pour accéder à toutes les fonctionnalités RSC.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="content-card">
         {/* Avatar section */}

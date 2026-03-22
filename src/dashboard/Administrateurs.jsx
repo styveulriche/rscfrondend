@@ -29,11 +29,36 @@ import {
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 
+const PERMISSIONS = [
+  { value: 'ACCES_STATISTIQUES',    label: 'Accès aux statistiques' },
+  { value: 'GESTION_FINANCES',      label: 'Gestion des finances' },
+  { value: 'VALIDATION_PAIEMENTS',  label: 'Validation des paiements' },
+  { value: 'GESTION_DECLARATIONS',  label: 'Gestion des déclarations' },
+  { value: 'GESTION_UTILISATEURS',  label: 'Gestion des utilisateurs' },
+  { value: 'SUPPORT_UTILISATEURS',  label: 'Support utilisateurs' },
+  { value: 'ENVOI_NOTIFICATIONS',   label: 'Envoi de notifications' },
+  { value: 'GESTION_CONTENU',       label: 'Gestion du contenu' },
+  { value: 'MODERATION',            label: 'Modération' },
+  { value: 'GESTION_ADMINS',        label: 'Gestion des administrateurs' },
+];
+
+// Permissions par défaut selon le rôle
+const ROLE_DEFAULT_PERMISSIONS = Object.freeze({
+  SUPER_ADMIN:       PERMISSIONS.map((p) => p.value),
+  ADMIN_FINANCIER:   ['ACCES_STATISTIQUES', 'GESTION_FINANCES', 'VALIDATION_PAIEMENTS'],
+  ADMIN_CONTENU:     ['ACCES_STATISTIQUES', 'GESTION_CONTENU', 'ENVOI_NOTIFICATIONS', 'MODERATION'],
+  ADMIN_SUPPORT:     ['ACCES_STATISTIQUES', 'GESTION_UTILISATEURS', 'SUPPORT_UTILISATEURS', 'ENVOI_NOTIFICATIONS'],
+  ADMIN_VALIDATEUR:  ['ACCES_STATISTIQUES', 'GESTION_DECLARATIONS', 'GESTION_UTILISATEURS'],
+  MODERATEUR:        ['ACCES_STATISTIQUES', 'GESTION_CONTENU', 'MODERATION'],
+});
+
 const ROLES = [
   { value: 'SUPER_ADMIN', label: 'Super admin' },
-  { value: 'ADMIN', label: 'Administrateur' },
-  { value: 'GESTIONNAIRE', label: 'Gestionnaire' },
-  { value: 'SUPPORT', label: 'Support' },
+  { value: 'ADMIN_VALIDATEUR', label: 'Admin validateur' },
+  { value: 'ADMIN_CONTENU', label: 'Admin contenu' },
+  { value: 'ADMIN_SUPPORT', label: 'Admin support' },
+  { value: 'ADMIN_FINANCIER', label: 'Admin financier' },
+  { value: 'MODERATEUR', label: 'Modérateur' },
 ];
 
 const INITIAL_FORM = Object.freeze({
@@ -41,7 +66,7 @@ const INITIAL_FORM = Object.freeze({
   prenom: '',
   email: '',
   motDePasse: '',
-  role: 'ADMIN',
+  role: 'ADMIN_VALIDATEUR',
 });
 
 const normalizePage = (payload) => {
@@ -59,10 +84,6 @@ const normalizePage = (payload) => {
   };
 };
 
-const parsePermissionsInput = (value) => value
-  .split(/[,\n]/)
-  .map((item) => item.trim())
-  .filter(Boolean);
 
 function Administrateurs() {
   const [page, setPage] = useState(0);
@@ -75,7 +96,7 @@ function Administrateurs() {
   const [selectedAdminId, setSelectedAdminId] = useState('');
   const [permissionInput, setPermissionInput] = useState('GESTION_DOSSIERS');
   const [permissionResult, setPermissionResult] = useState(null);
-  const [permissionsText, setPermissionsText] = useState('');
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [toolStatus, setToolStatus] = useState(null);
   const [editingAdmin, setEditingAdmin] = useState(null); // { id, nom, prenom, email, role }
   const [editStatus, setEditStatus] = useState(null);
@@ -115,6 +136,16 @@ function Administrateurs() {
       setSelectedAdminId(admins[0].id);
     }
   }, [admins, selectedAdminId]);
+
+  // Pré-remplir les permissions selon le rôle de l'admin sélectionné
+  useEffect(() => {
+    if (!selectedAdminId) return;
+    const admin = admins.find((a) => a.id === selectedAdminId);
+    if (!admin) return;
+    const defaults = ROLE_DEFAULT_PERMISSIONS[admin.role] || [];
+    setSelectedPermissions(defaults);
+    setPermissionInput(defaults[0] || PERMISSIONS[0].value);
+  }, [selectedAdminId, admins]);
 
   const handleEmailBlur = async () => {
     if (!formData.email) {
@@ -193,7 +224,7 @@ function Administrateurs() {
   };
 
   const handleStartEdit = (admin) => {
-    setEditingAdmin({ id: admin.id, nom: admin.nom, prenom: admin.prenom, email: admin.email, role: admin.role || 'ADMIN' });
+    setEditingAdmin({ id: admin.id, nom: admin.nom, prenom: admin.prenom, email: admin.email, role: admin.role || 'ADMIN_VALIDATEUR' });
     setEditStatus(null);
   };
 
@@ -228,20 +259,25 @@ function Administrateurs() {
   const handleUpdatePermissions = async (event) => {
     event.preventDefault();
     if (!selectedAdminId) return;
-    const permissions = parsePermissionsInput(permissionsText);
-    if (permissions.length === 0) {
-      setToolStatus({ type: 'error', message: 'Ajoutez au moins une permission.' });
+    if (selectedPermissions.length === 0) {
+      setToolStatus({ type: 'error', message: 'Sélectionnez au moins une permission.' });
       return;
     }
     try {
-      await updatePermissions(selectedAdminId, permissions);
+      await updatePermissions(selectedAdminId, selectedPermissions);
       setToolStatus({ type: 'success', message: 'Permissions mises à jour.' });
-      setPermissionsText('');
+      setSelectedPermissions([]);
       refresh();
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Impossible de mettre à jour les permissions.';
       setToolStatus({ type: 'error', message });
     }
+  };
+
+  const togglePermission = (value) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(value) ? prev.filter((p) => p !== value) : [...prev, value],
+    );
   };
 
   const summaryChips = [
@@ -588,12 +624,15 @@ function Administrateurs() {
           <form onSubmit={handleCheckPermission} style={{ marginTop: 12 }}>
             <label className="settings-label">
               Vérifier une permission
-              <input
+              <select
                 className="form-input"
                 value={permissionInput}
                 onChange={(e) => setPermissionInput(e.target.value)}
-                placeholder="Ex: GESTION_DOSSIERS"
-              />
+              >
+                {PERMISSIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
             </label>
             {permissionResult && (
               <div style={{ fontSize: 12, margin: '6px 0', color: permissionResult.value ? '#2e7d32' : '#c62828' }}>
@@ -610,18 +649,40 @@ function Administrateurs() {
           </form>
 
           <form onSubmit={handleUpdatePermissions} style={{ marginTop: 18 }}>
-            <label className="settings-label">
-              Mettre à jour les permissions (séparées par virgule ou retour)
-              <textarea
-                className="form-input"
-                rows={4}
-                value={permissionsText}
-                onChange={(e) => setPermissionsText(e.target.value)}
-                placeholder="GESTION_DOSSIERS, VALIDATION_PAIEMENTS"
-                style={{ resize: 'vertical' }}
-              />
-            </label>
-            <button type="submit" className="btn-add" style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <p className="settings-label" style={{ margin: 0 }}>Permissions</p>
+              {selectedAdminId && (() => {
+                const admin = admins.find((a) => a.id === selectedAdminId);
+                return admin?.role ? (
+                  <span style={{ fontSize: 11, color: 'var(--text-gray)' }}>
+                    Rôle : <strong>{admin.role}</strong>
+                  </span>
+                ) : null;
+              })()}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+              {PERMISSIONS.map(({ value, label }) => (
+                <label
+                  key={value}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPermissions.includes(value)}
+                    onChange={() => togglePermission(value)}
+                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--red-primary)' }}
+                  />
+                  <span>{label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-gray)', marginLeft: 'auto' }}>{value}</span>
+                </label>
+              ))}
+            </div>
+            {selectedPermissions.length > 0 && (
+              <p style={{ fontSize: 11, color: 'var(--text-gray)', marginBottom: 8 }}>
+                {selectedPermissions.length} permission{selectedPermissions.length > 1 ? 's' : ''} sélectionnée{selectedPermissions.length > 1 ? 's' : ''}
+              </p>
+            )}
+            <button type="submit" className="btn-add" style={{ marginTop: 2 }}>
               Enregistrer les permissions
             </button>
           </form>

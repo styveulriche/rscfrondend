@@ -5,8 +5,12 @@ export async function login(credentials) {
   return res.data;
 }
 
-export async function adminLogin(credentials) {
-  const res = await api.post('/auth/admin/login', credentials);
+export async function adminLogin(credentials, options = {}) {
+  const headers = options.xForwardedFor
+    ? { 'X-Forwarded-For': options.xForwardedFor }
+    : undefined;
+  const config = headers ? { headers } : undefined;
+  const res = await api.post('/auth/admin/login', credentials, config);
   return res.data;
 }
 

@@ -15,6 +15,11 @@ export async function listUsers(pageable) {
 	return r.data;
 }
 
+export async function listAllUsers() {
+	const r = await api.get('/utilisateurs/tous');
+	return r.data;
+}
+
 export async function listByStatus(statut) {
 	const r = await api.get(`/utilisateurs/statut/${statut}`);
 	return r.data;

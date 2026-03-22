@@ -1,7 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
-import { FaWallet, FaHandHoldingHeart, FaChartLine, FaClock } from 'react-icons/fa';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  FaWallet, FaHandHoldingHeart, FaChartLine, FaClock,
+  FaMoneyBillWave, FaChartBar, FaUsers, FaSync,
+} from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
+import { useRealtimeResource } from '../hooks/useRealtimeResource';
+import { REALTIME_INTERVALS } from '../config/realtime';
+import { paymentsStats } from '../services/paiements';
+import { donsStats } from '../services/dons';
+import { countUsersTotal } from '../services/users';
+
+/* ─── helpers ─────────────────────────────────────────────────── */
 
 const PROBATION_MONTHS_BY_STATUS = Object.freeze({
   RESIDENT_PERMANENT: 6,
@@ -77,12 +87,35 @@ const formatCurrency = (value) => {
   return number.toLocaleString('fr-CA', { minimumFractionDigits: 0 }) + ' $';
 };
 
+const formatCurrencyFull = (value) => {
+  const number = Number(value) || 0;
+  return number.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
+};
+
+/* ─── extraction dynamique des clés du Map backend ────────────── */
+
+const findByKeys = (obj, ...patterns) => {
+  if (!obj || typeof obj !== 'object') return null;
+  for (const key of Object.keys(obj)) {
+    const k = key.toLowerCase();
+    if (patterns.some((p) => k.includes(p))) {
+      const v = Number(obj[key]);
+      if (Number.isFinite(v)) return v;
+    }
+  }
+  return null;
+};
+
+/* ─── StatsRow (partagée entre toutes les pages) ──────────────── */
+
 export function StatsRow() {
-  const { user, balance: fallbackBalance } = useAuth();
+  const { user, isAdmin, balance: fallbackBalance } = useAuth();
   const { data, loading, lastUpdated, refresh } = useDashboardStats(user?.id);
 
   const stats = data || {};
-  const displayBalance = stats.balance ?? fallbackBalance ?? 0;
+  const displayBalance = Math.max(Number(stats.balance) || 0, Number(fallbackBalance) || 0);
+
+  if (isAdmin) return null;
 
   return (
     <div className="stats-row" style={{ position: 'relative' }}>
@@ -121,8 +154,173 @@ export function StatsRow() {
   );
 }
 
+/* ─── carte stat admin ────────────────────────────────────────── */
+
+function StatCard({ icon, label, value, bg, sub }) {
+  return (
+    <div style={{ background: bg, borderRadius: 12, padding: '18px 20px', color: 'white', display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: 10, flexShrink: 0 }}>{icon}</div>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 11, opacity: 0.85 }}>{label}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 800, lineHeight: 1.2 }}>{value}</p>
+        {sub && <p style={{ margin: '2px 0 0', fontSize: 11, opacity: 0.75 }}>{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── dashboard statistiques admin ───────────────────────────── */
+
+function AdminStatsDashboard() {
+  const payFetcher = useCallback(() => paymentsStats(), []);
+  const donFetcher = useCallback(() => donsStats(), []);
+  const userFetcher = useCallback(() => countUsersTotal(), []);
+
+  const { data: payData, loading: payLoading, lastUpdated: payUpdated, refresh: payRefresh } =
+    useRealtimeResource('admin-stats-paiements', payFetcher, { enabled: true, immediate: true, interval: REALTIME_INTERVALS.paiements });
+
+  const { data: donData, loading: donLoading, lastUpdated: donUpdated, refresh: donRefresh } =
+    useRealtimeResource('admin-stats-dons', donFetcher, { enabled: true, immediate: true, interval: REALTIME_INTERVALS.dashboardStats });
+
+  const { data: userCount, loading: userLoading, refresh: userRefresh } =
+    useRealtimeResource('admin-stats-users', userFetcher, { enabled: true, immediate: true, interval: REALTIME_INTERVALS.dashboardStats });
+
+  const loading = payLoading || donLoading || userLoading;
+  const lastUpdated = payUpdated || donUpdated;
+
+  const handleRefreshAll = () => { payRefresh(); donRefresh(); userRefresh(); };
+
+  /* Extraction des stats paiements (Map<String, Object>) */
+  const totalEncaisse = findByKeys(payData, 'montant', 'total', 'amount', 'somme', 'encaisse', 'revenu') ?? 0;
+  const nbTransactions = findByKeys(payData, 'transaction', 'paiement', 'count', 'nombre', 'nbr') ?? 0;
+  const nbPayeurs = findByKeys(payData, 'utilisateur', 'user', 'client', 'membre', 'payeur') ?? 0;
+  const moyennePaiement = nbTransactions > 0 ? totalEncaisse / nbTransactions : 0;
+
+  /* Stats dons */
+  const totalDons = donData?.totalDons ?? donData?.total ?? 0;
+  const nombreDons = donData?.nombreDons ?? donData?.count ?? 0;
+  const nbDonateurs = donData?.donateurs ?? 0;
+  const moyenneDon = donData?.moyenneDon ?? (nombreDons > 0 ? totalDons / nombreDons : 0);
+
+  /* Nombre d'utilisateurs */
+  const nbUsers = typeof userCount === 'number'
+    ? userCount
+    : (userCount?.total ?? userCount?.count ?? userCount ?? 0);
+
+  return (
+    <div>
+      {/* En-tête avec heure de mise à jour et refresh */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-dark)' }}>
+          Tableau de bord — statistiques globales
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {lastUpdated && (
+            <span style={{ fontSize: 11, color: 'var(--text-gray)' }}>
+              Mis à jour à {new Date(lastUpdated).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+          <button
+            className="btn-small"
+            onClick={handleRefreshAll}
+            disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            <FaSync size={10} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            {loading ? 'Chargement…' : 'Actualiser'}
+          </button>
+        </div>
+      </div>
+
+      {/* Section paiements */}
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+        Paiements &amp; Recharges
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <StatCard
+          icon={<FaMoneyBillWave size={18} color="white" />}
+          label="Total encaissé"
+          value={formatCurrencyFull(totalEncaisse)}
+          bg="linear-gradient(135deg,#1b5e20,#2e7d32)"
+        />
+        <StatCard
+          icon={<FaChartBar size={18} color="white" />}
+          label="Transactions"
+          value={nbTransactions.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#0d47a1,#1565c0)"
+        />
+        <StatCard
+          icon={<FaUsers size={18} color="white" />}
+          label="Utilisateurs payeurs"
+          value={nbPayeurs > 0 ? nbPayeurs.toLocaleString('fr-CA') : nbUsers.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#4a148c,#6a1b9a)"
+        />
+        <StatCard
+          icon={<FaWallet size={18} color="white" />}
+          label="Paiement moyen"
+          value={formatCurrencyFull(moyennePaiement)}
+          bg="linear-gradient(135deg,#bf360c,#e64a19)"
+        />
+      </div>
+
+      {/* Section dons */}
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+        Dons
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <StatCard
+          icon={<FaHandHoldingHeart size={18} color="white" />}
+          label="Total des dons"
+          value={formatCurrencyFull(totalDons)}
+          bg="linear-gradient(135deg,#880e4f,#ad1457)"
+        />
+        <StatCard
+          icon={<FaChartBar size={18} color="white" />}
+          label="Nombre de dons"
+          value={nombreDons.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#e65100,#f57c00)"
+        />
+        <StatCard
+          icon={<FaUsers size={18} color="white" />}
+          label="Donateurs uniques"
+          value={nbDonateurs.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#006064,#00838f)"
+        />
+        <StatCard
+          icon={<FaWallet size={18} color="white" />}
+          label="Don moyen"
+          value={formatCurrencyFull(moyenneDon)}
+          bg="linear-gradient(135deg,#1a237e,#283593)"
+        />
+      </div>
+
+      {/* Section utilisateurs */}
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+        Membres
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 8 }}>
+        <StatCard
+          icon={<FaUsers size={18} color="white" />}
+          label="Utilisateurs inscrits"
+          value={nbUsers.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#37474f,#546e7a)"
+        />
+        <StatCard
+          icon={<FaChartLine size={18} color="white" />}
+          label="Taux de participation"
+          value={nbUsers > 0 ? `${Math.min(100, Math.round((nbDonateurs / nbUsers) * 100))} %` : '—'}
+          sub="donateurs / membres"
+          bg="linear-gradient(135deg,#33691e,#558b2f)"
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─── composant principal Statistics ─────────────────────────── */
+
 function Statistics() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const probationInfo = useMemo(() => computeProbationInfo(user), [user]);
   const [time, setTime] = useState(() => getTimeLeft(probationInfo?.end));
 
@@ -145,25 +343,32 @@ function Statistics() {
   return (
     <div>
       <StatsRow />
-      <div className="probation-card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
-          <FaClock size={16} color="rgba(255,255,255,0.8)" />
-          <p className="probation-label" style={{ margin: 0 }}>Durée restante de votre période probatoire</p>
+
+      {isAdmin ? (
+        <div className="content-card" style={{ marginTop: 20 }}>
+          <AdminStatsDashboard />
         </div>
-        <p className="probation-note">
-          Statut : <strong>{probationInfo?.label || '—'}</strong> · Durée : <strong>{durationText}</strong>
-          {endLabel ? ` · Fin estimée le ${endLabel}` : ''}
-        </p>
-        {countdownActive ? (
-          <p className="probation-timer">
-            {time.months}mois {time.days}jours {pad(time.hours)}h {pad(time.minutes)}min {pad(time.seconds)}sec
+      ) : (
+        <div className="probation-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+            <FaClock size={16} color="rgba(255,255,255,0.8)" />
+            <p className="probation-label" style={{ margin: 0 }}>Durée restante de votre période probatoire</p>
+          </div>
+          <p className="probation-note">
+            Statut : <strong>{probationInfo?.label || '—'}</strong> · Durée : <strong>{durationText}</strong>
+            {endLabel ? ` · Fin estimée le ${endLabel}` : ''}
           </p>
-        ) : (
-          <p className="probation-timer">
-            {probationInfo ? 'Votre période probatoire est terminée.' : 'Information indisponible.'}
-          </p>
-        )}
-      </div>
+          {countdownActive ? (
+            <p className="probation-timer">
+              {time.months}mois {time.days}jours {pad(time.hours)}h {pad(time.minutes)}min {pad(time.seconds)}sec
+            </p>
+          ) : (
+            <p className="probation-timer">
+              {probationInfo ? 'Votre période probatoire est terminée.' : 'Information indisponible.'}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

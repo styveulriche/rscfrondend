@@ -62,7 +62,7 @@ function App() {
             <Route
               path="declarations"
               element={(
-                <AdminRoute>
+                <AdminRoute allowedRoles={['SUPER_ADMIN', 'ADMIN_VALIDATEUR']}>
                   <DeclarationsAdmin />
                 </AdminRoute>
               )}
@@ -70,7 +70,7 @@ function App() {
             <Route
               path="gestion-utilisateurs"
               element={(
-                <AdminRoute>
+                <AdminRoute allowedRoles={['SUPER_ADMIN', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR']}>
                   <AdminUsers />
                 </AdminRoute>
               )}

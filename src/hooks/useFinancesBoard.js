@@ -2,11 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeResource } from './useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import {
-  listPaiementsByUser,
+  listMyPaiements,
   totalByDossier,
-  paiementByReference,
-  initCheckoutSession,
-  createPaiement,
+  createPaymentIntent,
+  confirmPayment,
 } from '../services/paiements';
 import { listByUser as listDossiersByUser } from '../services/dossiers';
 
@@ -27,10 +26,8 @@ const extractDossier = (payload) => {
 };
 
 export function useFinancesBoard(userId) {
-  const fetcher = useCallback(() => {
-    if (!userId) return [];
-    return listPaiementsByUser(userId);
-  }, [userId]);
+  // Utilise GET /paiements/mes-paiements (pas besoin de l'userId en paramètre)
+  const fetcher = useCallback(() => listMyPaiements(), []);
 
   const paymentsResource = useRealtimeResource(
     `paiements-${userId || 'guest'}`,
@@ -66,7 +63,7 @@ export function useFinancesBoard(userId) {
         try {
           const totalResponse = await totalByDossier(id);
           dossierTotal = totalResponse?.montant ?? totalResponse?.total ?? totalResponse ?? null;
-        } catch (err) {
+        } catch {
           dossierTotal = null;
         }
       }
@@ -74,7 +71,7 @@ export function useFinancesBoard(userId) {
         id,
         label,
         loading: false,
-        error: id ? null : 'Aucun dossier actif n\'a été trouvé.',
+        error: null, // pas d'erreur si aucun dossier — c'est normal pour un nouvel utilisateur
         total: dossierTotal,
       });
       return id;
@@ -105,51 +102,36 @@ export function useFinancesBoard(userId) {
   };
 }
 
-export async function submitStripeTopup({ utilisateurId, dossierId, amount, stripeToken }) {
-  if (!utilisateurId) {
-    throw new Error('Utilisateur non identifié.');
-  }
-  if (!dossierId) {
-    throw new Error('Aucun dossier actif.');
-  }
-  if (!amount || amount <= 0) {
-    throw new Error('Montant invalide.');
-  }
-  if (!stripeToken) {
-    throw new Error('Jeton Stripe manquant.');
-  }
+/**
+ * Flux Stripe PaymentIntent en deux étapes :
+ *   Étape 1 — createPaymentIntent  → retourne { clientSecret, paymentIntentId }
+ *   Étape 2 — confirmPayment       → enregistre le paiement en base
+ *
+ * Utilisation :
+ *   const { paymentIntentId } = await initStripePayment({ amount, dossierId, description });
+ *   // … Stripe.js confirme le paiement côté client avec le clientSecret …
+ *   const receipt = await finalizeStripePayment({ paymentIntentId, dossierId });
+ */
+export async function initStripePayment({ amount, dossierId, description = 'Recharge RSC' }) {
+  if (!amount || amount <= 0) throw new Error('Montant invalide.');
 
-  const checkoutMeta = await initCheckoutSession({ utilisateurId, dossierId, montant: amount });
-  const derivedReference = checkoutMeta?.reference
-    || checkoutMeta?.sessionId
-    || checkoutMeta?.id
-    || checkoutMeta?.code
-    || `CHK-${Date.now().toString().slice(-6)}`;
-
-  await createPaiement(
-    { utilisateurId, dossierId, reference: derivedReference },
-    {
-      montant: amount,
-      modePaiement: 'STRIPE',
-      stripeToken,
-      reference: derivedReference,
-      metadata: {
-        canal: 'STRIPE',
-        checkout: checkoutMeta,
-      },
-    },
-  );
-
-  let verification = null;
-  try {
-    verification = await paiementByReference(derivedReference);
-  } catch (err) {
-    verification = null;
-  }
+  const data = await createPaymentIntent({
+    montant: Number(amount),
+    dossierId,
+    description,
+  });
 
   return {
-    reference: derivedReference,
-    checkout: checkoutMeta,
-    verification,
+    clientSecret: data.clientSecret,
+    paymentIntentId: data.paymentIntentId,
+    montant: data.montant,
+    devise: data.devise,
   };
+}
+
+export async function finalizeStripePayment({ paymentIntentId, dossierId }) {
+  if (!paymentIntentId) throw new Error('paymentIntentId manquant.');
+
+  const receipt = await confirmPayment({ paymentIntentId, dossierId });
+  return receipt; // { id, montant, statut, reçuURL, referenceTransaction, … }
 }

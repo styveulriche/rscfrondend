@@ -10,6 +10,7 @@ import { getProfile } from '../services/users';
 import { getAdmin } from '../services/administrateurs';
 import { myTotal } from '../services/paiements';
 import { mesDonsTotal } from '../services/dons';
+import { mesCotisationsTotal } from '../services/cotisations';
 
 const AuthContext = createContext(null);
 
@@ -97,19 +98,24 @@ export function AuthProvider({ children }) {
         return profileBalance;
       }
 
-      // Priorité 2 : total reçu - total dons
+      // Priorité 2 : total reçu − total dons − total cotisations payées
       const extractNum = (obj) => {
         if (!obj) return 0;
         if (typeof obj === 'number') return obj;
-        const v = obj.totalDons ?? obj.total ?? obj.montant ?? obj.montantTotal
+        const v = obj.totalDons ?? obj.totalCotisations ?? obj.total ?? obj.montant ?? obj.montantTotal
           ?? Object.values(obj).find((x) => typeof x === 'number');
         return Number.isFinite(Number(v)) ? Number(v) : 0;
       };
 
-      const [receivedRes, donsRes] = await Promise.allSettled([myTotal(), mesDonsTotal()]);
-      const received = receivedRes.status === 'fulfilled' ? extractNum(receivedRes.value) : 0;
-      const donated = donsRes.status === 'fulfilled' ? extractNum(donsRes.value) : 0;
-      const computed = Math.max(0, received - donated);
+      const [receivedRes, donsRes, cotisationsRes] = await Promise.allSettled([
+        myTotal(),
+        mesDonsTotal(),
+        mesCotisationsTotal(),
+      ]);
+      const received    = receivedRes.status    === 'fulfilled' ? extractNum(receivedRes.value)    : 0;
+      const donated     = donsRes.status        === 'fulfilled' ? extractNum(donsRes.value)        : 0;
+      const cotisations = cotisationsRes.status === 'fulfilled' ? extractNum(cotisationsRes.value) : 0;
+      const computed = Math.max(0, received - donated - cotisations);
       setBalance(computed);
       return computed;
     } catch (err) {

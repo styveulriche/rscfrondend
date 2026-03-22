@@ -28,6 +28,7 @@ import Profile from './dashboard/Profile';
 import Administrateurs from './dashboard/Administrateurs';
 import AdminUsers from './dashboard/AdminUsers';
 import DeclarationsAdmin from './dashboard/DeclarationsAdmin';
+import Cotisations from './dashboard/Cotisations';
 import './App.css';
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
             <Route path="messagerie"   element={<Messagerie />} />
             <Route path="notifications"element={<Notifications />} />
             <Route path="parametres"   element={<Parametres />} />
+            <Route path="cotisations"  element={<Cotisations />} />
             <Route path="suivi"        element={<Suivi />} />
             <Route path="signaler"     element={<SignalerEvenement />} />
             <Route

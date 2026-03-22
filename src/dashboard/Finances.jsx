@@ -501,7 +501,7 @@ function StripeCardForm({ amount, dossierId, onSuccess, onCancel }) {
 /* ─── vue utilisateur ────────────────────────────────────────── */
 
 function UserFinancesView() {
-  const { user, refreshBalance, addToBalance } = useAuth();
+  const { user, addToBalance } = useAuth();
   const [topupAmount, setTopupAmount] = useState('');
   const [showCardForm, setShowCardForm] = useState(false);
   const [topupStatus, setTopupStatus] = useState(null);
@@ -545,7 +545,6 @@ function UserFinancesView() {
     // Synchronisation avec le serveur en arrière-plan
     refreshTransactions();
     refreshDossier();
-    refreshBalance();
   };
 
   const statusColors = {

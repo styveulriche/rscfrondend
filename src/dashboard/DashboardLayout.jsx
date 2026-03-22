@@ -5,6 +5,7 @@ import {
   FaExclamationCircle, FaSearch, FaEnvelope, FaBell, FaCog,
   FaSignOutAlt, FaUserCircle, FaBars, FaTimes, FaMapMarkerAlt,
   FaUserShield, FaUsersCog, FaClipboardList, FaLock, FaExclamationTriangle,
+  FaFileInvoiceDollar,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { getUnreadCount } from '../services/notifications';
@@ -14,6 +15,7 @@ const baseMenuItems = [
   { path: 'statistiques',  label: 'Statistiques',            Icon: FaChartBar },
   { path: 'finances',      label: 'Finances',                Icon: FaWallet },
   { path: 'don',           label: 'Faire un don',            Icon: FaHandHoldingHeart },
+  { path: 'cotisations',  label: 'Cotisations',             Icon: FaFileInvoiceDollar },
   { path: 'adresses',      label: 'Adresses',                Icon: FaMapMarkerAlt },
   { path: 'ayant-droit',   label: 'Mes ayants droit',        Icon: FaUsers,   userOnly: true },
   { path: 'parrainage',    label: 'Parrainage & références', Icon: FaUserFriends, userOnly: true },
@@ -73,6 +75,7 @@ function DashboardLayout() {
   const ADMIN_ROLES_FOR = useMemo(() => Object.freeze({
     finances:               ['SUPER_ADMIN', 'ADMIN_FINANCIER'],
     don:                    ['SUPER_ADMIN', 'ADMIN_FINANCIER'],
+    cotisations:            ['SUPER_ADMIN', 'ADMIN_FINANCIER'],
     adresses:               [],  // admins don't need addresses
     signaler:               ['SUPER_ADMIN', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'MODERATEUR'],
     suivi:                  ['SUPER_ADMIN', 'ADMIN_FINANCIER', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR', 'MODERATEUR'],

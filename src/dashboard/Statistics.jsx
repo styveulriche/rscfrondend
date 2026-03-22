@@ -113,7 +113,12 @@ export function StatsRow() {
   const { data, loading, lastUpdated, refresh } = useDashboardStats(user?.id);
 
   const stats = data || {};
-  const displayBalance = Math.max(Number(stats.balance) || 0, Number(fallbackBalance) || 0);
+  // fallbackBalance (AuthContext) est la source principale : il est mis à jour
+  // immédiatement par addToBalance() après chaque débit ou crédit.
+  // stats.balance sert uniquement si le contexte n'a pas encore chargé.
+  const displayBalance = Number(fallbackBalance) > 0
+    ? Number(fallbackBalance)
+    : (Number(stats.balance) || 0);
 
   if (isAdmin) return null;
 

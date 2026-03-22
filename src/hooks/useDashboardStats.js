@@ -3,6 +3,7 @@ import { useRealtimeResource } from './useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import { myTotal } from '../services/paiements';
 import { mesDonsTotal } from '../services/dons';
+import { mesCotisationsTotal } from '../services/cotisations';
 import { countByUser as countAyantsByUser } from '../services/ayantsDroit';
 import { listParrainagesByParrain } from '../services/parrainages';
 
@@ -44,24 +45,29 @@ export function useDashboardStats(userId) {
   const fetcher = useCallback(async () => {
     if (!userId) return DEFAULT_STATS;
 
-    const [totalResult, donsResult, ayantsResult, parrainagesResult] = await Promise.allSettled([
+    const [totalResult, donsResult, cotisationsResult, ayantsResult, parrainagesResult] = await Promise.allSettled([
       myTotal(),
       mesDonsTotal(),
+      mesCotisationsTotal(),
       countAyantsByUser(userId),
       listParrainagesByParrain(userId, { page: 0, size: 1, sort: 'createdAt,desc' }),
     ]);
 
-    const totalData  = totalResult.status  === 'fulfilled' ? totalResult.value  : null;
-    const donsData   = donsResult.status   === 'fulfilled' ? donsResult.value   : null;
-    const ayants     = ayantsResult.status === 'fulfilled' ? ayantsResult.value : null;
-    const parrainages = parrainagesResult.status === 'fulfilled' ? parrainagesResult.value : null;
+    const totalData      = totalResult.status      === 'fulfilled' ? totalResult.value      : null;
+    const donsData       = donsResult.status       === 'fulfilled' ? donsResult.value       : null;
+    const cotisData      = cotisationsResult.status === 'fulfilled' ? cotisationsResult.value : null;
+    const ayants         = ayantsResult.status     === 'fulfilled' ? ayantsResult.value     : null;
+    const parrainages    = parrainagesResult.status === 'fulfilled' ? parrainagesResult.value : null;
 
-    const received      = extractNum(totalData);
+    const received       = extractNum(totalData);
     const donationsTotal = extractNum(donsData);
     const donationsCount = extractCount(donsData);
+    const cotisations    = cotisData
+      ? (cotisData.totalCotisations ?? extractNum(cotisData))
+      : 0;
 
-    // Solde net = total reçu − total donné (min 0)
-    const balance = Math.max(0, received - donationsTotal);
+    // Solde net = total reçu − total dons − total cotisations (min 0)
+    const balance = Math.max(0, received - donationsTotal - cotisations);
 
     const ayantsCount = normalizeNumber(
       ayants?.count ?? ayants?.total ?? ayants,

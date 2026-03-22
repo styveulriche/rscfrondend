@@ -377,7 +377,6 @@ function UserDonationView() {
             await submitDonation({ amount, message, campagne, balance: Number(balance) || 0 });
             addToBalance(-amount);
             window.dispatchEvent(new CustomEvent('rsc:stats-refresh'));
-            refreshBalance();
             await refreshDossier();
             loadDons();
           }}

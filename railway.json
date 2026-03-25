@@ -4,6 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
+    "buildCommand": "CI=false npm run build",
     "startCommand": "npx serve -s build -l $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3

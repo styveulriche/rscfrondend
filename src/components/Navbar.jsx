@@ -52,8 +52,12 @@ function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to="/" className="navbar-logo">
+      <Link to="/" className="navbar-logo" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
         <div className="logo-circle">RSC</div>
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+          <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--red-primary)', letterSpacing: 0.5 }}>RETOUR AUX SOURCES</span>
+          <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-gray)', letterSpacing: 1 }}>CANADA</span>
+        </div>
       </Link>
 
       {/* Desktop links */}

@@ -170,7 +170,15 @@ export function AuthProvider({ children }) {
       }
     }
 
-    const normalized = withRoleMetadata(profile ?? payload);
+    // Fusionner les rôles du payload (réponse login) ET du profil
+    // car le profil utilisateur peut ne pas retourner les rôles admin
+    const payloadRoles = extractRoles(payload);
+    const profileRoles = extractRoles(profile ?? {});
+    const mergedRoles = [...new Set([...payloadRoles, ...profileRoles])];
+    const baseData = profile ?? payload;
+    const normalized = withRoleMetadata(
+      mergedRoles.length > 0 ? { ...baseData, roles: mergedRoles } : baseData
+    );
     const allowedRoles = options.allowedRoles?.length ? options.allowedRoles : ADMIN_ROLE_KEYS;
     if (options.requireAdmin && !hasRoleFromList(normalized.roles, allowedRoles)) {
       clearTokens();
@@ -203,15 +211,15 @@ export function AuthProvider({ children }) {
 
       const profile = await finalizeAuth(data, options);
 
-      // Si l'utilisateur a un rôle admin mais a été authentifié via l'endpoint
-      // utilisateur, ses tokens n'ont pas les droits admin côté backend.
-      // On ré-authentifie via l'endpoint admin pour obtenir le bon JWT.
-      if (!usedAdminEndpoint && hasRoleFromList(profile?.roles, ADMIN_ROLE_KEYS)) {
+      // Toujours tenter l'endpoint admin après un login utilisateur réussi :
+      // si c'est un admin, on obtient un JWT avec les bons droits.
+      // Si c'est un utilisateur ordinaire, l'endpoint admin échoue silencieusement.
+      if (!usedAdminEndpoint) {
         try {
           const adminData = await adminLoginService(credentials);
           return await finalizeAuth(adminData, options);
         } catch {
-          // L'endpoint admin a refusé : on garde le profil existant
+          // Utilisateur ordinaire ou endpoint admin indisponible → garder le profil existant
         }
       }
 

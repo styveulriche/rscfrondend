@@ -91,11 +91,10 @@ const decodeJwtRoles = (token) => {
 const shouldFallbackToAdmin = (error) => {
   if (!error || !error.response) return false;
   const { status } = error.response;
-  // Tenter l'endpoint admin si l'endpoint utilisateur rejette (compte admin non reconnu)
-  if (status === 401 || status === 403 || status === 404) return true;
+  // Fallback uniquement si l'utilisateur n'existe pas dans la table users
+  if (status === 404) return true;
   const message = (error.response.data?.message || error.message || '').toLowerCase();
-  return message.includes('non trouvé') || message.includes('not found')
-    || message.includes('not found') || message.includes('invalid');
+  return message.includes('non trouvé') || message.includes('not found');
 };
 
 export function AuthProvider({ children }) {
@@ -233,15 +232,18 @@ export function AuthProvider({ children }) {
 
       const profile = await finalizeAuth(data, options);
 
-      // Si le JWT ou le profil révèle des rôles admin ET qu'on n'a pas encore
-      // utilisé l'endpoint admin, on ré-authentifie pour obtenir le bon token.
-      // Pour un utilisateur ordinaire, cette branche n'est jamais atteinte.
-      if (!usedAdminEndpoint && hasRoleFromList(profile?.roles, ADMIN_ROLE_KEYS)) {
+      // Tenter silencieusement l'endpoint admin pour obtenir un token
+      // avec les droits complets (SUPER_ADMIN, ADMIN_FINANCIER, etc.).
+      // Pour les utilisateurs ordinaires, cet appel échoue silencieusement
+      // car /auth/admin/login est maintenant exclu du Bearer token (skipAuth).
+      if (!usedAdminEndpoint) {
         try {
           const adminData = await adminLoginService(credentials);
-          return await finalizeAuth(adminData, options);
+          if (adminData?.token || adminData?.accessToken) {
+            return await finalizeAuth(adminData, options);
+          }
         } catch {
-          // Endpoint admin indisponible → garder le profil existant
+          // Utilisateur ordinaire — garder le profil existant
         }
       }
 

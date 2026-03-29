@@ -9,6 +9,7 @@ const baseURL = process.env.REACT_APP_API_BASE_URL?.trim() || LOCAL_BASE_URL;
 
 const AUTH_EXCLUDED_PATHS = [
   '/auth/login',
+  '/auth/admin/login',
   '/auth/register',
   '/auth/refresh',
   '/auth/verify-mfa',

@@ -33,6 +33,14 @@ export async function mesDonsTotal() {
 // ── Admin ─────────────────────────────────────────────────────
 
 /**
+ * Dons d'un utilisateur (admin) — GET /dons/utilisateur/{id}
+ */
+export async function donsByUser(utilisateurId) {
+  const r = await api.get(`/dons/utilisateur/${utilisateurId}`);
+  return r.data;
+}
+
+/**
  * Tous les dons — GET /dons/admin/tous
  * Filtre optionnel par statut, paginé.
  */

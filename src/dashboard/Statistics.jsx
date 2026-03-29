@@ -6,9 +6,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats, listAllPaiements } from '../services/paiements';
-import { donsStats, listAllDons } from '../services/dons';
-import { countUsersTotal } from '../services/users';
+import { paymentsStats, totalByUser } from '../services/paiements';
+import { donsStats, listAllDons, donsByUser } from '../services/dons';
+import { countUsersTotal, listAllUsers } from '../services/users';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -181,20 +181,59 @@ const is403 = (reason) => {
   return status === 403 || msg.includes('access denied') || msg.includes('denied');
 };
 
+// Extrait un nombre d'une réponse qui peut être un nombre brut ou un objet
+const extractTotalNum = (v) => {
+  if (!v && v !== 0) return 0;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'object') {
+    const n = v.total ?? v.montant ?? v.montantTotal ?? v.totalPaiements ?? v.totalDons
+      ?? Object.values(v).find((x) => typeof x === 'number');
+    return Number.isFinite(Number(n)) ? Number(n) : 0;
+  }
+  return Number(v) || 0;
+};
+
+// Fallback paiements : somme des totaux par utilisateur
 async function computePayStatsFromList() {
-  const raw = await listAllPaiements({ size: 2000 });
-  const list = Array.isArray(raw) ? raw : (raw?.content || raw?.data || []);
-  const total = list.reduce((s, p) => s + (Number(p.montant) || 0), 0);
-  const payeurs = new Set(list.map((p) => p.utilisateurId ?? p.userId ?? p.utilisateur?.id).filter(Boolean)).size;
-  return { totalMontant: total, nombrePaiements: list.length, utilisateursUniques: payeurs };
+  const usersRaw = await listAllUsers();
+  const users = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.content || usersRaw?.data || []);
+  const results = await Promise.allSettled(users.map((u) => totalByUser(u.id)));
+  let total = 0;
+  let nbPayeurs = 0;
+  results.forEach((r) => {
+    if (r.status === 'fulfilled') {
+      const v = extractTotalNum(r.value);
+      if (v > 0) { total += v; nbPayeurs++; }
+    }
+  });
+  return { totalMontant: total, nombrePaiements: nbPayeurs, utilisateursUniques: nbPayeurs };
 }
 
+// Fallback dons : liste admin (accessible certains rôles) sinon par utilisateur
 async function computeDonStatsFromList() {
-  const raw = await listAllDons({ size: 2000 });
-  const list = Array.isArray(raw) ? raw : (raw?.content || raw?.data || []);
-  const total = list.reduce((s, d) => s + (Number(d.montant) || 0), 0);
-  const donateurs = new Set(list.map((d) => d.utilisateurId ?? d.userId ?? d.donateur?.id ?? d.utilisateur?.id).filter(Boolean)).size;
-  return { totalDons: total, nombreDons: list.length, donateurs, moyenneDon: list.length > 0 ? total / list.length : 0 };
+  try {
+    const raw = await listAllDons({ size: 2000 });
+    const list = Array.isArray(raw) ? raw : (raw?.content || raw?.data || []);
+    const total = list.reduce((s, d) => s + (Number(d.montant) || 0), 0);
+    const donateurs = new Set(list.map((d) => d.utilisateurId ?? d.userId ?? d.donateur?.id ?? d.utilisateur?.id).filter(Boolean)).size;
+    return { totalDons: total, nombreDons: list.length, donateurs, moyenneDon: list.length > 0 ? total / list.length : 0 };
+  } catch {
+    // Fallback : somme des dons par utilisateur via /dons/utilisateur/{id}
+    const usersRaw = await listAllUsers();
+    const users = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.content || usersRaw?.data || []);
+    const results = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
+    let total = 0;
+    let nbDons = 0;
+    const donateursSet = new Set();
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        const list = Array.isArray(r.value) ? r.value : (r.value?.content || r.value?.data || []);
+        list.forEach((d) => { total += Number(d.montant) || 0; nbDons++; });
+        if (list.length > 0) donateursSet.add(users[i].id);
+      }
+    });
+    return { totalDons: total, nombreDons: nbDons, donateurs: donateursSet.size, moyenneDon: nbDons > 0 ? total / nbDons : 0 };
+  }
 }
 
 /* ─── dashboard statistiques admin ───────────────────────────── */

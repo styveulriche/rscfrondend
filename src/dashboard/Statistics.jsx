@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import { paymentsStats, totalByUser } from '../services/paiements';
-import { donsStats, listAllDons, donsByUser } from '../services/dons';
+import { donsStats, donsByUser } from '../services/dons';
 import { countUsersTotal, listAllUsers } from '../services/users';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
@@ -175,10 +175,11 @@ function StatCard({ icon, label, value, bg, sub }) {
 
 /* ─── fallbacks stats pour SUPER_ADMIN (endpoints liste) ─────── */
 
-const is403 = (reason) => {
+// Déclenche le fallback pour toute erreur serveur (403, 500) ou accès refusé
+const shouldFallback = (reason) => {
   const status = reason?.response?.status;
-  const msg = (reason?.response?.data?.message || reason?.message || '').toLowerCase();
-  return status === 403 || msg.includes('access denied') || msg.includes('denied');
+  if (!status) return false;
+  return status === 403 || status === 500 || status >= 400;
 };
 
 // Extrait un nombre d'une réponse qui peut être un nombre brut ou un objet
@@ -209,31 +210,22 @@ async function computePayStatsFromList() {
   return { totalMontant: total, nombrePaiements: nbPayeurs, utilisateursUniques: nbPayeurs };
 }
 
-// Fallback dons : liste admin (accessible certains rôles) sinon par utilisateur
+// Fallback dons : par utilisateur via /dons/utilisateur/{id}
 async function computeDonStatsFromList() {
-  try {
-    const raw = await listAllDons({ size: 2000 });
-    const list = Array.isArray(raw) ? raw : (raw?.content || raw?.data || []);
-    const total = list.reduce((s, d) => s + (Number(d.montant) || 0), 0);
-    const donateurs = new Set(list.map((d) => d.utilisateurId ?? d.userId ?? d.donateur?.id ?? d.utilisateur?.id).filter(Boolean)).size;
-    return { totalDons: total, nombreDons: list.length, donateurs, moyenneDon: list.length > 0 ? total / list.length : 0 };
-  } catch {
-    // Fallback : somme des dons par utilisateur via /dons/utilisateur/{id}
-    const usersRaw = await listAllUsers();
-    const users = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.content || usersRaw?.data || []);
-    const results = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
-    let total = 0;
-    let nbDons = 0;
-    const donateursSet = new Set();
-    results.forEach((r, i) => {
-      if (r.status === 'fulfilled') {
-        const list = Array.isArray(r.value) ? r.value : (r.value?.content || r.value?.data || []);
-        list.forEach((d) => { total += Number(d.montant) || 0; nbDons++; });
-        if (list.length > 0) donateursSet.add(users[i].id);
-      }
-    });
-    return { totalDons: total, nombreDons: nbDons, donateurs: donateursSet.size, moyenneDon: nbDons > 0 ? total / nbDons : 0 };
-  }
+  const usersRaw = await listAllUsers();
+  const users = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.content || usersRaw?.data || []);
+  const results = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
+  let total = 0;
+  let nbDons = 0;
+  const donateursSet = new Set();
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      const list = Array.isArray(r.value) ? r.value : (r.value?.content || r.value?.data || []);
+      list.forEach((d) => { total += Number(d.montant) || 0; nbDons++; });
+      if (list.length > 0) donateursSet.add(users[i].id);
+    }
+  });
+  return { totalDons: total, nombreDons: nbDons, donateurs: donateursSet.size, moyenneDon: nbDons > 0 ? total / nbDons : 0 };
 }
 
 /* ─── dashboard statistiques admin ───────────────────────────── */
@@ -257,7 +249,7 @@ function AdminStatsDashboard() {
 
     if (payRes.status === 'fulfilled') {
       setPayData(payRes.value);
-    } else if (is403(payRes.reason)) {
+    } else if (shouldFallback(payRes.reason)) {
       // Fallback : calcul depuis la liste complète des paiements
       try {
         const fallback = await computePayStatsFromList();
@@ -271,7 +263,7 @@ function AdminStatsDashboard() {
 
     if (donRes.status === 'fulfilled') {
       setDonData(donRes.value);
-    } else if (is403(donRes.reason)) {
+    } else if (shouldFallback(donRes.reason)) {
       // Fallback : calcul depuis la liste complète des dons
       try {
         const fallback = await computeDonStatsFromList();

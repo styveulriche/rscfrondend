@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-const PROD_BASE_URL = 'https://rsc-production.up.railway.app/api/v1';
 const DEFAULT_PORT = process.env.REACT_APP_API_PORT || '8080';
 const LOCAL_BASE_URL = `http://localhost:${DEFAULT_PORT}/api/v1`;
 
-const baseURL =
-  process.env.REACT_APP_API_BASE_URL?.trim() ||
-  (process.env.NODE_ENV === 'production' ? PROD_BASE_URL : LOCAL_BASE_URL);
+// En production (Docker+nginx), REACT_APP_API_BASE_URL=/api/v1 est injecté au build.
+// En dev local, on utilise localhost.
+const baseURL = process.env.REACT_APP_API_BASE_URL?.trim() || LOCAL_BASE_URL;
 
 const AUTH_EXCLUDED_PATHS = [
   '/auth/login',

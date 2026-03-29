@@ -271,9 +271,17 @@ export function AuthProvider({ children }) {
         if (parsed?.id) {
           try {
             const profile = await getProfile(parsed.id);
-            // Fusionner : données sauvegardées + retour backend
-            // Les champs du profil complété (telephone, paysOrigine, etc.) ne sont jamais perdus
-            const merged = withRoleMetadata({ ...parsed, ...profile });
+            // Fusionner sans écraser les rôles admin stockés :
+            // getProfile retourne un profil utilisateur sans rôles admin,
+            // ce qui effacerait les droits SUPER_ADMIN sauvegardés.
+            const savedRoles = extractRoles(parsed);
+            const profileRoles = extractRoles(profile);
+            const mergedRoles = [...new Set([...savedRoles, ...profileRoles])];
+            const merged = withRoleMetadata({
+              ...parsed,
+              ...profile,
+              ...(mergedRoles.length > 0 ? { roles: mergedRoles } : {}),
+            });
             setUser(merged);
             localStorage.setItem('rsc_user', JSON.stringify(merged));
             await refreshBalance(merged.id);

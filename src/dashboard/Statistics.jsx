@@ -6,8 +6,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats } from '../services/paiements';
-import { donsStats } from '../services/dons';
+import { paymentsStats, listAllPaiements } from '../services/paiements';
+import { donsStats, listAllDons } from '../services/dons';
 import { countUsersTotal } from '../services/users';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
@@ -173,6 +173,30 @@ function StatCard({ icon, label, value, bg, sub }) {
   );
 }
 
+/* ─── fallbacks stats pour SUPER_ADMIN (endpoints liste) ─────── */
+
+const is403 = (reason) => {
+  const status = reason?.response?.status;
+  const msg = (reason?.response?.data?.message || reason?.message || '').toLowerCase();
+  return status === 403 || msg.includes('access denied') || msg.includes('denied');
+};
+
+async function computePayStatsFromList() {
+  const raw = await listAllPaiements({ size: 2000 });
+  const list = Array.isArray(raw) ? raw : (raw?.content || raw?.data || []);
+  const total = list.reduce((s, p) => s + (Number(p.montant) || 0), 0);
+  const payeurs = new Set(list.map((p) => p.utilisateurId ?? p.userId ?? p.utilisateur?.id).filter(Boolean)).size;
+  return { totalMontant: total, nombrePaiements: list.length, utilisateursUniques: payeurs };
+}
+
+async function computeDonStatsFromList() {
+  const raw = await listAllDons({ size: 2000 });
+  const list = Array.isArray(raw) ? raw : (raw?.content || raw?.data || []);
+  const total = list.reduce((s, d) => s + (Number(d.montant) || 0), 0);
+  const donateurs = new Set(list.map((d) => d.utilisateurId ?? d.userId ?? d.donateur?.id ?? d.utilisateur?.id).filter(Boolean)).size;
+  return { totalDons: total, nombreDons: list.length, donateurs, moyenneDon: list.length > 0 ? total / list.length : 0 };
+}
+
 /* ─── dashboard statistiques admin ───────────────────────────── */
 
 function AdminStatsDashboard() {
@@ -194,24 +218,30 @@ function AdminStatsDashboard() {
 
     if (payRes.status === 'fulfilled') {
       setPayData(payRes.value);
+    } else if (is403(payRes.reason)) {
+      // Fallback : calcul depuis la liste complète des paiements
+      try {
+        const fallback = await computePayStatsFromList();
+        setPayData(fallback);
+      } catch {
+        errs.pay = 'Paiements : données non disponibles';
+      }
     } else {
-      const status = payRes.reason?.response?.status;
-      const msg = payRes.reason?.response?.data?.message || payRes.reason?.message || '';
-      errs.pay = status === 403 || msg.toLowerCase().includes('access denied') || msg.toLowerCase().includes('denied')
-        ? 'Paiements : accès refusé — rôle insuffisant (ADMIN_FINANCIER requis)'
-        : `Paiements : ${msg || 'erreur inconnue'}`;
-      console.error('[Stats] paiements/stats error:', payRes.reason);
+      errs.pay = payRes.reason?.response?.data?.message || payRes.reason?.message || 'Erreur paiements';
     }
 
     if (donRes.status === 'fulfilled') {
       setDonData(donRes.value);
+    } else if (is403(donRes.reason)) {
+      // Fallback : calcul depuis la liste complète des dons
+      try {
+        const fallback = await computeDonStatsFromList();
+        setDonData(fallback);
+      } catch {
+        errs.don = 'Dons : données non disponibles';
+      }
     } else {
-      const status = donRes.reason?.response?.status;
-      const msg = donRes.reason?.response?.data?.message || donRes.reason?.message || '';
-      errs.don = status === 403 || msg.toLowerCase().includes('access denied') || msg.toLowerCase().includes('denied')
-        ? 'Dons : accès refusé — rôle insuffisant (ADMIN_FINANCIER requis)'
-        : `Dons : ${msg || 'erreur inconnue'}`;
-      console.error('[Stats] dons/admin/stats error:', donRes.reason);
+      errs.don = donRes.reason?.response?.data?.message || donRes.reason?.message || 'Erreur dons';
     }
 
     if (userRes.status === 'fulfilled') {

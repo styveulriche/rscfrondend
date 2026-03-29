@@ -14,6 +14,12 @@ export async function listMyPaiements() {
   return r.data;
 }
 
+/** Tous les paiements (admin) — GET /paiements/admin/tous */
+export async function listAllPaiements({ page = 0, size = 1000 } = {}) {
+  const r = await api.get('/paiements/admin/tous', { params: { page, size } });
+  return r.data;
+}
+
 /** Total encaissé de l'utilisateur connecté — GET /paiements/mes-paiements/total */
 export async function myTotal() {
   const r = await api.get('/paiements/mes-paiements/total');

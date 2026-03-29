@@ -188,16 +188,34 @@ export function AuthProvider({ children }) {
   const login = async (credentials, options = {}) => {
     try {
       let data;
+      let usedAdminEndpoint = false;
+
       try {
         data = await loginService(credentials);
       } catch (err) {
         if (shouldFallbackToAdmin(err)) {
           data = await adminLoginService(credentials);
+          usedAdminEndpoint = true;
         } else {
           throw err;
         }
       }
-      return finalizeAuth(data, options);
+
+      const profile = await finalizeAuth(data, options);
+
+      // Si l'utilisateur a un rôle admin mais a été authentifié via l'endpoint
+      // utilisateur, ses tokens n'ont pas les droits admin côté backend.
+      // On ré-authentifie via l'endpoint admin pour obtenir le bon JWT.
+      if (!usedAdminEndpoint && hasRoleFromList(profile?.roles, ADMIN_ROLE_KEYS)) {
+        try {
+          const adminData = await adminLoginService(credentials);
+          return await finalizeAuth(adminData, options);
+        } catch {
+          // L'endpoint admin a refusé : on garde le profil existant
+        }
+      }
+
+      return profile;
     } catch (err) {
       throw err;
     }

@@ -67,6 +67,27 @@ const hasRoleFromList = (roles, allowed = ADMIN_ROLE_KEYS) => {
   return roles.some((role) => normalizedAllowed.includes(role));
 };
 
+// Décode le payload d'un JWT pour en extraire les rôles
+const decodeJwtRoles = (token) => {
+  if (!token || typeof token !== 'string') return [];
+  try {
+    const b64 = token.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/');
+    if (!b64) return [];
+    const payload = JSON.parse(atob(b64));
+    const roles = [];
+    if (payload.role) roles.push(payload.role);
+    if (Array.isArray(payload.roles)) roles.push(...payload.roles);
+    if (payload.authorities) {
+      const auths = Array.isArray(payload.authorities) ? payload.authorities : [payload.authorities];
+      auths.forEach((a) => roles.push(typeof a === 'string' ? a.replace(/^ROLE_/, '') : a));
+    }
+    if (payload.scope) roles.push(...String(payload.scope).split(' '));
+    return roles.map((r) => String(r).trim().toUpperCase()).filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
 const shouldFallbackToAdmin = (error) => {
   if (!error || !error.response) return false;
   const { status } = error.response;
@@ -170,11 +191,12 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // Fusionner les rôles du payload (réponse login) ET du profil
-    // car le profil utilisateur peut ne pas retourner les rôles admin
+    // Extraire les rôles depuis 3 sources : JWT, payload réponse, profil backend
+    const token = payload?.token || payload?.accessToken;
+    const jwtRoles = decodeJwtRoles(token);
     const payloadRoles = extractRoles(payload);
     const profileRoles = extractRoles(profile ?? {});
-    const mergedRoles = [...new Set([...payloadRoles, ...profileRoles])];
+    const mergedRoles = [...new Set([...jwtRoles, ...payloadRoles, ...profileRoles])];
     const baseData = profile ?? payload;
     const normalized = withRoleMetadata(
       mergedRoles.length > 0 ? { ...baseData, roles: mergedRoles } : baseData
@@ -211,15 +233,15 @@ export function AuthProvider({ children }) {
 
       const profile = await finalizeAuth(data, options);
 
-      // Toujours tenter l'endpoint admin après un login utilisateur réussi :
-      // si c'est un admin, on obtient un JWT avec les bons droits.
-      // Si c'est un utilisateur ordinaire, l'endpoint admin échoue silencieusement.
-      if (!usedAdminEndpoint) {
+      // Si le JWT ou le profil révèle des rôles admin ET qu'on n'a pas encore
+      // utilisé l'endpoint admin, on ré-authentifie pour obtenir le bon token.
+      // Pour un utilisateur ordinaire, cette branche n'est jamais atteinte.
+      if (!usedAdminEndpoint && hasRoleFromList(profile?.roles, ADMIN_ROLE_KEYS)) {
         try {
           const adminData = await adminLoginService(credentials);
           return await finalizeAuth(adminData, options);
         } catch {
-          // Utilisateur ordinaire ou endpoint admin indisponible → garder le profil existant
+          // Endpoint admin indisponible → garder le profil existant
         }
       }
 

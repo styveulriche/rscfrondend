@@ -41,7 +41,8 @@ function DashboardLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!user?.id) return;
+    // Les admins n'ont pas de notifications utilisateur sur cet endpoint
+    if (!user?.id || isAdmin) return;
     const fetchUnread = async () => {
       try {
         const res = await getUnreadCount();
@@ -58,7 +59,7 @@ function DashboardLayout() {
     fetchUnread();
     const interval = setInterval(fetchUnread, 20000);
     return () => clearInterval(interval);
-  }, [user?.id]);
+  }, [user?.id, isAdmin]);
 
   const displayName = user?.nomComplet
     || [user?.prenom, user?.nom].filter(Boolean).join(' ')

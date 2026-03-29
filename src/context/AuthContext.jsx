@@ -133,7 +133,10 @@ export function AuthProvider({ children }) {
       setBalance(computed);
       return computed;
     } catch (err) {
-      console.error('Erreur lors de la récupération du solde utilisateur', err);
+      // 404 = l'utilisateur n'a pas de profil (ex : compte admin) → silencieux
+      if (err?.response?.status !== 404) {
+        console.error('Erreur lors de la récupération du solde utilisateur', err);
+      }
       return 0;
     }
   }, [user?.id]);
@@ -287,8 +290,23 @@ export function AuthProvider({ children }) {
             localStorage.setItem('rsc_user', JSON.stringify(merged));
             await refreshBalance(merged.id);
           } catch (err) {
-            setUser(parsed);
-            await refreshBalance(parsed.id);
+            // getProfile a échoué → tenter getAdmin (admin sans compte utilisateur)
+            let adminProfile = null;
+            try { adminProfile = await getAdmin(parsed.id); } catch { /* absent aussi dans la table admin */ }
+            const savedRoles = extractRoles(parsed);
+            const adminRoles = extractRoles(adminProfile);
+            const mergedRoles = [...new Set([...savedRoles, ...adminRoles])];
+            const updatedUser = withRoleMetadata({
+              ...parsed,
+              ...(adminProfile || {}),
+              ...(mergedRoles.length > 0 ? { roles: mergedRoles } : {}),
+            });
+            setUser(updatedUser);
+            localStorage.setItem('rsc_user', JSON.stringify(updatedUser));
+            // Pas de refreshBalance pour les admins (pas de portefeuille)
+            if (!hasRoleFromList(mergedRoles.length > 0 ? mergedRoles : extractRoles(parsed))) {
+              await refreshBalance(updatedUser.id);
+            }
           }
         } else {
           setUser(parsed);
@@ -325,16 +343,17 @@ export function AuthProvider({ children }) {
     }
   };
 
-  useEffect(() => {
-    if (!user?.id) return;
-    refreshBalance();
-    const timer = setInterval(() => refreshBalance(), 20000);
-    return () => clearInterval(timer);
-  }, [refreshBalance, user?.id]);
-
   const userRoles = useMemo(() => (user?.roles ? user.roles : extractRoles(user)), [user]);
   const isAdmin = useMemo(() => hasRoleFromList(userRoles), [userRoles]);
   const isSuperAdmin = useMemo(() => hasRoleFromList(userRoles, ['SUPER_ADMIN']), [userRoles]);
+
+  useEffect(() => {
+    // Les admins n'ont pas de portefeuille → pas de polling de solde
+    if (!user?.id || isAdmin) return;
+    refreshBalance();
+    const timer = setInterval(() => refreshBalance(), 20000);
+    return () => clearInterval(timer);
+  }, [refreshBalance, user?.id, isAdmin]);
 
   const hasRole = useCallback((rolesToCheck) => {
     if (!rolesToCheck || userRoles.length === 0) return false;

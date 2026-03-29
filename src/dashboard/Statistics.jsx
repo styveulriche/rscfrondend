@@ -5,7 +5,6 @@ import {
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
-import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import { paymentsStats } from '../services/paiements';
 import { donsStats } from '../services/dons';
@@ -177,43 +176,77 @@ function StatCard({ icon, label, value, bg, sub }) {
 /* ─── dashboard statistiques admin ───────────────────────────── */
 
 function AdminStatsDashboard() {
-  const payFetcher = useCallback(() => paymentsStats(), []);
-  const donFetcher = useCallback(() => donsStats(), []);
-  const userFetcher = useCallback(() => countUsersTotal(), []);
+  const [payData, setPayData] = useState(null);
+  const [donData, setDonData] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [apiErrors, setApiErrors] = useState({ pay: null, don: null, user: null });
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const { data: payData, loading: payLoading, lastUpdated: payUpdated, refresh: payRefresh } =
-    useRealtimeResource('admin-stats-paiements', payFetcher, { enabled: true, immediate: true, interval: REALTIME_INTERVALS.paiements });
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const [payRes, donRes, userRes] = await Promise.allSettled([
+      paymentsStats(),
+      donsStats(),
+      countUsersTotal(),
+    ]);
+    const errs = {};
+    if (payRes.status === 'fulfilled') setPayData(payRes.value);
+    else errs.pay = payRes.reason?.response?.data?.message || payRes.reason?.message || 'Erreur paiements';
+    if (donRes.status === 'fulfilled') setDonData(donRes.value);
+    else errs.don = donRes.reason?.response?.data?.message || donRes.reason?.message || 'Erreur dons';
+    if (userRes.status === 'fulfilled') setUserData(userRes.value);
+    else errs.user = userRes.reason?.response?.data?.message || userRes.reason?.message || 'Erreur utilisateurs';
+    setApiErrors(errs);
+    setLastUpdated(Date.now());
+    setLoading(false);
+  }, []);
 
-  const { data: donData, loading: donLoading, lastUpdated: donUpdated, refresh: donRefresh } =
-    useRealtimeResource('admin-stats-dons', donFetcher, { enabled: true, immediate: true, interval: REALTIME_INTERVALS.dashboardStats });
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const { data: userCount, loading: userLoading, refresh: userRefresh } =
-    useRealtimeResource('admin-stats-users', userFetcher, { enabled: true, immediate: true, interval: REALTIME_INTERVALS.dashboardStats });
+  useEffect(() => {
+    const id = setInterval(fetchAll, REALTIME_INTERVALS.paiements || 25000);
+    return () => clearInterval(id);
+  }, [fetchAll]);
 
-  const loading = payLoading || donLoading || userLoading;
-  const lastUpdated = payUpdated || donUpdated;
+  useEffect(() => {
+    const handler = () => fetchAll();
+    window.addEventListener('rsc:stats-refresh', handler);
+    return () => window.removeEventListener('rsc:stats-refresh', handler);
+  }, [fetchAll]);
 
-  const handleRefreshAll = () => { payRefresh(); donRefresh(); userRefresh(); };
-
-  /* Extraction des stats paiements (Map<String, Object>) */
-  const totalEncaisse = findByKeys(payData, 'montant', 'total', 'amount', 'somme', 'encaisse', 'revenu') ?? 0;
-  const nbTransactions = findByKeys(payData, 'transaction', 'paiement', 'count', 'nombre', 'nbr') ?? 0;
-  const nbPayeurs = findByKeys(payData, 'utilisateur', 'user', 'client', 'membre', 'payeur') ?? 0;
+  /* ── Extraction robuste du Map<String, Object> paiements ── */
+  const totalEncaisse = findByKeys(payData,
+    'montant', 'total', 'encaisse', 'amount', 'somme', 'revenu', 'chiffre') ?? 0;
+  const nbTransactions = findByKeys(payData,
+    'transaction', 'paiement', 'nombre', 'count', 'nbr', 'nb', 'quantity') ?? 0;
+  const nbPayeurs = findByKeys(payData,
+    'utilisateur', 'user', 'payeur', 'client', 'membre', 'unique') ?? 0;
   const moyennePaiement = nbTransactions > 0 ? totalEncaisse / nbTransactions : 0;
 
-  /* Stats dons */
-  const totalDons = donData?.totalDons ?? donData?.total ?? 0;
-  const nombreDons = donData?.nombreDons ?? donData?.count ?? 0;
-  const nbDonateurs = donData?.donateurs ?? 0;
-  const moyenneDon = donData?.moyenneDon ?? (nombreDons > 0 ? totalDons / nombreDons : 0);
+  /* ── Stats dons ── */
+  const totalDons   = findByKeys(donData, 'totaldon', 'total') ?? donData?.totalDons ?? 0;
+  const nombreDons  = findByKeys(donData, 'nombredon', 'nombre', 'count') ?? donData?.nombreDons ?? 0;
+  const nbDonateurs = findByKeys(donData, 'donateur', 'unique', 'user') ?? donData?.donateurs ?? 0;
+  const moyenneDon  = donData?.moyenneDon ?? (nombreDons > 0 ? totalDons / nombreDons : 0);
 
-  /* Nombre d'utilisateurs */
-  const nbUsers = typeof userCount === 'number'
-    ? userCount
-    : (userCount?.total ?? userCount?.count ?? userCount ?? 0);
+  /* ── Nombre d'utilisateurs ── */
+  const nbUsers = typeof userData === 'number'
+    ? userData
+    : (userData?.total ?? userData?.count ?? userData?.nombre
+       ?? (userData && typeof userData === 'object'
+           ? (Object.values(userData).find((v) => typeof v === 'number') ?? 0)
+           : 0));
+
+  const anyError = Object.values(apiErrors).some(Boolean);
 
   return (
     <div>
+      {anyError && (
+        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(198,40,40,0.08)', border: '1px solid rgba(198,40,40,0.2)', fontSize: 13, color: '#c62828' }}>
+          {Object.entries(apiErrors).filter(([, v]) => v).map(([k, v]) => <div key={k}>{v}</div>)}
+        </div>
+      )}
       {/* En-tête avec heure de mise à jour et refresh */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-dark)' }}>
@@ -227,7 +260,7 @@ function AdminStatsDashboard() {
           )}
           <button
             className="btn-small"
-            onClick={handleRefreshAll}
+            onClick={fetchAll}
             disabled={loading}
             style={{ display: 'flex', alignItems: 'center', gap: 5 }}
           >

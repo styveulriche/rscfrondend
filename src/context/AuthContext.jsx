@@ -88,14 +88,6 @@ const decodeJwtRoles = (token) => {
   }
 };
 
-const shouldFallbackToAdmin = (error) => {
-  if (!error || !error.response) return false;
-  const { status } = error.response;
-  // Fallback uniquement si l'utilisateur n'existe pas dans la table users
-  if (status === 404) return true;
-  const message = (error.response.data?.message || error.message || '').toLowerCase();
-  return message.includes('non trouvé') || message.includes('not found');
-};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -215,42 +207,27 @@ export function AuthProvider({ children }) {
   }, [refreshBalance]);
 
   const login = async (credentials, options = {}) => {
-    try {
-      let data;
-      let usedAdminEndpoint = false;
+    // Tenter les deux endpoints en parallèle.
+    // Le login admin a la priorité : il retourne un token avec tous les droits
+    // (SUPER_ADMIN, ADMIN_FINANCIER, etc.). Pour les utilisateurs ordinaires,
+    // l'endpoint admin retourne 401/403 et on utilise le login utilisateur.
+    const [userResult, adminResult] = await Promise.allSettled([
+      loginService(credentials),
+      adminLoginService(credentials),
+    ]);
 
-      try {
-        data = await loginService(credentials);
-      } catch (err) {
-        if (shouldFallbackToAdmin(err)) {
-          data = await adminLoginService(credentials);
-          usedAdminEndpoint = true;
-        } else {
-          throw err;
-        }
-      }
-
-      const profile = await finalizeAuth(data, options);
-
-      // Tenter silencieusement l'endpoint admin pour obtenir un token
-      // avec les droits complets (SUPER_ADMIN, ADMIN_FINANCIER, etc.).
-      // Pour les utilisateurs ordinaires, cet appel échoue silencieusement
-      // car /auth/admin/login est maintenant exclu du Bearer token (skipAuth).
-      if (!usedAdminEndpoint) {
-        try {
-          const adminData = await adminLoginService(credentials);
-          if (adminData?.token || adminData?.accessToken) {
-            return await finalizeAuth(adminData, options);
-          }
-        } catch {
-          // Utilisateur ordinaire — garder le profil existant
-        }
-      }
-
-      return profile;
-    } catch (err) {
-      throw err;
+    // Admin login réussi → priorité absolue
+    if (adminResult.status === 'fulfilled' && (adminResult.value?.token || adminResult.value?.accessToken)) {
+      return await finalizeAuth(adminResult.value, options);
     }
+
+    // Seulement le login utilisateur a réussi
+    if (userResult.status === 'fulfilled') {
+      return await finalizeAuth(userResult.value, options);
+    }
+
+    // Les deux ont échoué → lever l'erreur utilisateur (plus explicite)
+    throw userResult.reason;
   };
 
   const loginAdmin = async (credentials, options = {}) => {

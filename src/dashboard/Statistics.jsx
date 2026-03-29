@@ -191,12 +191,35 @@ function AdminStatsDashboard() {
       countUsersTotal(),
     ]);
     const errs = {};
-    if (payRes.status === 'fulfilled') setPayData(payRes.value);
-    else errs.pay = payRes.reason?.response?.data?.message || payRes.reason?.message || 'Erreur paiements';
-    if (donRes.status === 'fulfilled') setDonData(donRes.value);
-    else errs.don = donRes.reason?.response?.data?.message || donRes.reason?.message || 'Erreur dons';
-    if (userRes.status === 'fulfilled') setUserData(userRes.value);
-    else errs.user = userRes.reason?.response?.data?.message || userRes.reason?.message || 'Erreur utilisateurs';
+
+    if (payRes.status === 'fulfilled') {
+      setPayData(payRes.value);
+    } else {
+      const status = payRes.reason?.response?.status;
+      const msg = payRes.reason?.response?.data?.message || payRes.reason?.message || '';
+      errs.pay = status === 403 || msg.toLowerCase().includes('access denied') || msg.toLowerCase().includes('denied')
+        ? 'Paiements : accès refusé — rôle insuffisant (ADMIN_FINANCIER requis)'
+        : `Paiements : ${msg || 'erreur inconnue'}`;
+      console.error('[Stats] paiements/stats error:', payRes.reason);
+    }
+
+    if (donRes.status === 'fulfilled') {
+      setDonData(donRes.value);
+    } else {
+      const status = donRes.reason?.response?.status;
+      const msg = donRes.reason?.response?.data?.message || donRes.reason?.message || '';
+      errs.don = status === 403 || msg.toLowerCase().includes('access denied') || msg.toLowerCase().includes('denied')
+        ? 'Dons : accès refusé — rôle insuffisant (ADMIN_FINANCIER requis)'
+        : `Dons : ${msg || 'erreur inconnue'}`;
+      console.error('[Stats] dons/admin/stats error:', donRes.reason);
+    }
+
+    if (userRes.status === 'fulfilled') {
+      setUserData(userRes.value);
+    } else {
+      errs.user = userRes.reason?.response?.data?.message || userRes.reason?.message || 'Erreur utilisateurs';
+    }
+
     setApiErrors(errs);
     setLastUpdated(Date.now());
     setLoading(false);

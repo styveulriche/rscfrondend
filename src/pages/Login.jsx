@@ -18,8 +18,12 @@ function Login() {
     setError('');
     setLoading(true);
     try {
-      await login({ email: form.email, motDePasse: form.password });
-      navigate('/dashboard');
+      const profile = await login({ email: form.email, motDePasse: form.password });
+      const roles = profile?.roles || [];
+      const isAdmin = roles.some((r) =>
+        ['SUPER_ADMIN','ADMIN_FINANCIER','ADMIN_VALIDATEUR','ADMIN_SUPPORT','ADMIN_CONTENU','ADMIN','ADMINISTRATEUR'].includes(r)
+      );
+      navigate(isAdmin ? '/dashboard/statistiques' : '/dashboard');
     } catch (err) {
       const msg = err?.response?.data?.message || "Échec de l'authentification — vérifiez vos identifiants.";
       setError(msg);

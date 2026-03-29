@@ -70,9 +70,11 @@ const hasRoleFromList = (roles, allowed = ADMIN_ROLE_KEYS) => {
 const shouldFallbackToAdmin = (error) => {
   if (!error || !error.response) return false;
   const { status } = error.response;
-  if (status === 404) return true;
+  // Tenter l'endpoint admin si l'endpoint utilisateur rejette (compte admin non reconnu)
+  if (status === 401 || status === 403 || status === 404) return true;
   const message = (error.response.data?.message || error.message || '').toLowerCase();
-  return message.includes('non trouvé') || message.includes('not found');
+  return message.includes('non trouvé') || message.includes('not found')
+    || message.includes('not found') || message.includes('invalid');
 };
 
 export function AuthProvider({ children }) {

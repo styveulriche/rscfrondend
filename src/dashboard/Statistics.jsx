@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats, totalByUser } from '../services/paiements';
+import { paymentsStats, listPaiementsByUser } from '../services/paiements';
 import { donsStats, donsByUser } from '../services/dons';
 import { countUsersTotal, listAllUsers } from '../services/users';
 
@@ -182,45 +182,42 @@ const shouldFallback = (reason) => {
   return status === 403 || status === 500 || status >= 400;
 };
 
-// Extrait un nombre d'une réponse qui peut être un nombre brut ou un objet
-const extractTotalNum = (v) => {
-  if (!v && v !== 0) return 0;
-  if (typeof v === 'number') return v;
-  if (typeof v === 'object') {
-    const n = v.total ?? v.montant ?? v.montantTotal ?? v.totalPaiements ?? v.totalDons
-      ?? Object.values(v).find((x) => typeof x === 'number');
-    return Number.isFinite(Number(n)) ? Number(n) : 0;
-  }
-  return Number(v) || 0;
+// Normalise n'importe quelle réponse en tableau d'éléments
+const toList = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.content)) return raw.content;
+  if (Array.isArray(raw.data)) return raw.data;
+  return [];
 };
 
-// Fallback paiements : somme des totaux par utilisateur
+// Fallback paiements : GET /paiements/utilisateur/{id} par utilisateur
 async function computePayStatsFromList() {
-  const usersRaw = await listAllUsers();
-  const users = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.content || usersRaw?.data || []);
-  const results = await Promise.allSettled(users.map((u) => totalByUser(u.id)));
+  const users = toList(await listAllUsers());
+  const results = await Promise.allSettled(users.map((u) => listPaiementsByUser(u.id)));
   let total = 0;
-  let nbPayeurs = 0;
-  results.forEach((r) => {
+  let nbTransactions = 0;
+  const payeursSet = new Set();
+  results.forEach((r, i) => {
     if (r.status === 'fulfilled') {
-      const v = extractTotalNum(r.value);
-      if (v > 0) { total += v; nbPayeurs++; }
+      const list = toList(r.value);
+      list.forEach((p) => { total += Number(p.montant) || 0; nbTransactions++; });
+      if (list.length > 0) payeursSet.add(users[i].id);
     }
   });
-  return { totalMontant: total, nombrePaiements: nbPayeurs, utilisateursUniques: nbPayeurs };
+  return { totalMontant: total, nombrePaiements: nbTransactions, utilisateursUniques: payeursSet.size };
 }
 
-// Fallback dons : par utilisateur via /dons/utilisateur/{id}
+// Fallback dons : GET /dons/utilisateur/{id} par utilisateur
 async function computeDonStatsFromList() {
-  const usersRaw = await listAllUsers();
-  const users = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.content || usersRaw?.data || []);
+  const users = toList(await listAllUsers());
   const results = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
   let total = 0;
   let nbDons = 0;
   const donateursSet = new Set();
   results.forEach((r, i) => {
     if (r.status === 'fulfilled') {
-      const list = Array.isArray(r.value) ? r.value : (r.value?.content || r.value?.data || []);
+      const list = toList(r.value);
       list.forEach((d) => { total += Number(d.montant) || 0; nbDons++; });
       if (list.length > 0) donateursSet.add(users[i].id);
     }
@@ -299,20 +296,23 @@ function AdminStatsDashboard() {
     return () => window.removeEventListener('rsc:stats-refresh', handler);
   }, [fetchAll]);
 
-  /* ── Extraction robuste du Map<String, Object> paiements ── */
-  const totalEncaisse = findByKeys(payData,
-    'montant', 'total', 'encaisse', 'amount', 'somme', 'revenu', 'chiffre') ?? 0;
-  const nbTransactions = findByKeys(payData,
-    'transaction', 'paiement', 'nombre', 'count', 'nbr', 'nb', 'quantity') ?? 0;
-  const nbPayeurs = findByKeys(payData,
-    'utilisateur', 'user', 'payeur', 'client', 'membre', 'unique') ?? 0;
+  /* ── Extraction paiements (endpoint stats ou fallback) ── */
+  const totalEncaisse = payData?.totalMontant
+    ?? findByKeys(payData, 'montant', 'total', 'encaisse', 'amount', 'somme', 'revenu', 'chiffre')
+    ?? 0;
+  const nbTransactions = payData?.nombrePaiements
+    ?? findByKeys(payData, 'transaction', 'paiement', 'nombre', 'count', 'nbr', 'nb', 'quantity')
+    ?? 0;
+  const nbPayeurs = payData?.utilisateursUniques
+    ?? findByKeys(payData, 'utilisateur', 'user', 'payeur', 'client', 'membre', 'unique')
+    ?? 0;
   const moyennePaiement = nbTransactions > 0 ? totalEncaisse / nbTransactions : 0;
 
-  /* ── Stats dons ── */
-  const totalDons   = findByKeys(donData, 'totaldon', 'total') ?? donData?.totalDons ?? 0;
-  const nombreDons  = findByKeys(donData, 'nombredon', 'nombre', 'count') ?? donData?.nombreDons ?? 0;
-  const nbDonateurs = findByKeys(donData, 'donateur', 'unique', 'user') ?? donData?.donateurs ?? 0;
-  const moyenneDon  = donData?.moyenneDon ?? (nombreDons > 0 ? totalDons / nombreDons : 0);
+  /* ── Stats dons (endpoint stats ou fallback) ── */
+  const totalDons   = donData?.totalDons   ?? findByKeys(donData, 'totaldon', 'total') ?? 0;
+  const nombreDons  = donData?.nombreDons  ?? findByKeys(donData, 'nombredon', 'nombre', 'count') ?? 0;
+  const nbDonateurs = donData?.donateurs   ?? findByKeys(donData, 'donateur', 'unique', 'user') ?? 0;
+  const moyenneDon  = donData?.moyenneDon  ?? (nombreDons > 0 ? totalDons / nombreDons : 0);
 
   /* ── Nombre d'utilisateurs ── */
   const nbUsers = typeof userData === 'number'

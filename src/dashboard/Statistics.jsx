@@ -6,9 +6,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats } from '../services/paiements';
-import { donsStats } from '../services/dons';
-import { countUsersTotal } from '../services/users';
+import { paymentsStats, totalByUser, listPaiementsByUser } from '../services/paiements';
+import { donsStats, donsByUser } from '../services/dons';
+import { countUsersTotal, listAllUsers } from '../services/users';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -173,15 +173,76 @@ function StatCard({ icon, label, value, bg, sub }) {
   );
 }
 
-/* ─── description code erreur HTTP ───────────────────────────── */
-const httpErrorLabel = (reason) => {
-  const status = reason?.response?.status;
-  const msg = reason?.response?.data?.message || reason?.response?.data || '';
-  if (status === 403) return `Accès refusé (403)`;
-  if (status === 500) return `Erreur serveur backend (500)`;
-  if (status === 404) return `Endpoint introuvable (404)`;
-  return msg || reason?.message || `Erreur inconnue`;
+/* ─── helpers fallback ────────────────────────────────────────── */
+
+const toList = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.content)) return raw.content;
+  if (Array.isArray(raw.data)) return raw.data;
+  return [];
 };
+
+const extractNum = (v) => {
+  if (!v && v !== 0) return 0;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'object') {
+    const n = v.total ?? v.montant ?? v.montantTotal ?? v.totalPaiements ?? v.totalDons
+      ?? Object.values(v).find((x) => typeof x === 'number');
+    return Number.isFinite(Number(n)) ? Number(n) : 0;
+  }
+  return Number(v) || 0;
+};
+
+// Tente les endpoints par utilisateur — ne spam pas (une seule passe)
+async function fallbackPayStats() {
+  const users = toList(await listAllUsers());
+  if (users.length === 0) return null;
+  // Tenter totalByUser (GET /paiements/utilisateur/{id}/total)
+  const totals = await Promise.allSettled(users.map((u) => totalByUser(u.id)));
+  const anyTotalOk = totals.some((r) => r.status === 'fulfilled');
+  if (anyTotalOk) {
+    let total = 0; let payeurs = 0;
+    totals.forEach((r) => {
+      if (r.status === 'fulfilled') {
+        const v = extractNum(r.value);
+        total += v;
+        if (v > 0) payeurs++;
+      }
+    });
+    return { totalMontant: total, nombrePaiements: payeurs, utilisateursUniques: payeurs };
+  }
+  // Tenter listPaiementsByUser (GET /paiements/utilisateur/{id})
+  const lists = await Promise.allSettled(users.map((u) => listPaiementsByUser(u.id)));
+  const anyListOk = lists.some((r) => r.status === 'fulfilled');
+  if (!anyListOk) return null;
+  let total = 0; let nb = 0; const payeursSet = new Set();
+  lists.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      const list = toList(r.value);
+      list.forEach((p) => { total += Number(p.montant) || 0; nb++; });
+      if (list.length > 0) payeursSet.add(users[i].id);
+    }
+  });
+  return { totalMontant: total, nombrePaiements: nb, utilisateursUniques: payeursSet.size };
+}
+
+async function fallbackDonStats() {
+  const users = toList(await listAllUsers());
+  if (users.length === 0) return null;
+  const lists = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
+  const anyOk = lists.some((r) => r.status === 'fulfilled');
+  if (!anyOk) return null;
+  let total = 0; let nb = 0; const donateursSet = new Set();
+  lists.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      const list = toList(r.value);
+      list.forEach((d) => { total += Number(d.montant) || 0; nb++; });
+      if (list.length > 0) donateursSet.add(users[i].id);
+    }
+  });
+  return { totalDons: total, nombreDons: nb, donateurs: donateursSet.size, moyenneDon: nb > 0 ? total / nb : 0 };
+}
 
 /* ─── dashboard statistiques admin ───────────────────────────── */
 
@@ -205,13 +266,26 @@ function AdminStatsDashboard() {
     if (payRes.status === 'fulfilled') {
       setPayData(payRes.value);
     } else {
-      errs.pay = httpErrorLabel(payRes.reason);
+      // Endpoint stats indisponible → fallback par utilisateur
+      try {
+        const fb = await fallbackPayStats();
+        if (fb) { setPayData(fb); }
+        else { errs.pay = `Paiements (${payRes.reason?.response?.status ?? '?'})`; }
+      } catch {
+        errs.pay = `Paiements (${payRes.reason?.response?.status ?? '?'})`;
+      }
     }
 
     if (donRes.status === 'fulfilled') {
       setDonData(donRes.value);
     } else {
-      errs.don = httpErrorLabel(donRes.reason);
+      try {
+        const fb = await fallbackDonStats();
+        if (fb) { setDonData(fb); }
+        else { errs.don = `Dons (${donRes.reason?.response?.status ?? '?'})`; }
+      } catch {
+        errs.don = `Dons (${donRes.reason?.response?.status ?? '?'})`;
+      }
     }
 
     if (userRes.status === 'fulfilled') {
@@ -308,75 +382,63 @@ function AdminStatsDashboard() {
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
         Paiements &amp; Recharges
       </p>
-      {apiErrors.pay ? (
-        <div style={{ padding: '14px 16px', borderRadius: 8, background: '#f5f5f5', color: '#757575', fontSize: 13, marginBottom: 20 }}>
-          Statistiques paiements indisponibles — erreur backend ({apiErrors.pay})
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-          <StatCard
-            icon={<FaMoneyBillWave size={18} color="white" />}
-            label="Total encaissé"
-            value={formatCurrencyFull(totalEncaisse)}
-            bg="linear-gradient(135deg,#1b5e20,#2e7d32)"
-          />
-          <StatCard
-            icon={<FaChartBar size={18} color="white" />}
-            label="Transactions"
-            value={nbTransactions.toLocaleString('fr-CA')}
-            bg="linear-gradient(135deg,#0d47a1,#1565c0)"
-          />
-          <StatCard
-            icon={<FaUsers size={18} color="white" />}
-            label="Utilisateurs payeurs"
-            value={nbPayeurs > 0 ? nbPayeurs.toLocaleString('fr-CA') : nbUsers.toLocaleString('fr-CA')}
-            bg="linear-gradient(135deg,#4a148c,#6a1b9a)"
-          />
-          <StatCard
-            icon={<FaWallet size={18} color="white" />}
-            label="Paiement moyen"
-            value={formatCurrencyFull(moyennePaiement)}
-            bg="linear-gradient(135deg,#bf360c,#e64a19)"
-          />
-        </div>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <StatCard
+          icon={<FaMoneyBillWave size={18} color="white" />}
+          label="Total encaissé"
+          value={apiErrors.pay ? '—' : formatCurrencyFull(totalEncaisse)}
+          bg="linear-gradient(135deg,#1b5e20,#2e7d32)"
+        />
+        <StatCard
+          icon={<FaChartBar size={18} color="white" />}
+          label="Transactions"
+          value={apiErrors.pay ? '—' : nbTransactions.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#0d47a1,#1565c0)"
+        />
+        <StatCard
+          icon={<FaUsers size={18} color="white" />}
+          label="Utilisateurs payeurs"
+          value={apiErrors.pay ? nbUsers.toLocaleString('fr-CA') : (nbPayeurs > 0 ? nbPayeurs.toLocaleString('fr-CA') : nbUsers.toLocaleString('fr-CA'))}
+          bg="linear-gradient(135deg,#4a148c,#6a1b9a)"
+        />
+        <StatCard
+          icon={<FaWallet size={18} color="white" />}
+          label="Paiement moyen"
+          value={apiErrors.pay ? '—' : formatCurrencyFull(moyennePaiement)}
+          bg="linear-gradient(135deg,#bf360c,#e64a19)"
+        />
+      </div>
 
       {/* Section dons */}
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
         Dons
       </p>
-      {apiErrors.don ? (
-        <div style={{ padding: '14px 16px', borderRadius: 8, background: '#f5f5f5', color: '#757575', fontSize: 13, marginBottom: 20 }}>
-          Statistiques dons indisponibles — erreur backend ({apiErrors.don})
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-          <StatCard
-            icon={<FaHandHoldingHeart size={18} color="white" />}
-            label="Total des dons"
-            value={formatCurrencyFull(totalDons)}
-            bg="linear-gradient(135deg,#880e4f,#ad1457)"
-          />
-          <StatCard
-            icon={<FaChartBar size={18} color="white" />}
-            label="Nombre de dons"
-            value={nombreDons.toLocaleString('fr-CA')}
-            bg="linear-gradient(135deg,#e65100,#f57c00)"
-          />
-          <StatCard
-            icon={<FaUsers size={18} color="white" />}
-            label="Donateurs uniques"
-            value={nbDonateurs.toLocaleString('fr-CA')}
-            bg="linear-gradient(135deg,#006064,#00838f)"
-          />
-          <StatCard
-            icon={<FaWallet size={18} color="white" />}
-            label="Don moyen"
-            value={formatCurrencyFull(moyenneDon)}
-            bg="linear-gradient(135deg,#1a237e,#283593)"
-          />
-        </div>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <StatCard
+          icon={<FaHandHoldingHeart size={18} color="white" />}
+          label="Total des dons"
+          value={apiErrors.don ? '—' : formatCurrencyFull(totalDons)}
+          bg="linear-gradient(135deg,#880e4f,#ad1457)"
+        />
+        <StatCard
+          icon={<FaChartBar size={18} color="white" />}
+          label="Nombre de dons"
+          value={apiErrors.don ? '—' : nombreDons.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#e65100,#f57c00)"
+        />
+        <StatCard
+          icon={<FaUsers size={18} color="white" />}
+          label="Donateurs uniques"
+          value={apiErrors.don ? '—' : nbDonateurs.toLocaleString('fr-CA')}
+          bg="linear-gradient(135deg,#006064,#00838f)"
+        />
+        <StatCard
+          icon={<FaWallet size={18} color="white" />}
+          label="Don moyen"
+          value={apiErrors.don ? '—' : formatCurrencyFull(moyenneDon)}
+          bg="linear-gradient(135deg,#1a237e,#283593)"
+        />
+      </div>
 
       {/* Section utilisateurs */}
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>

@@ -6,9 +6,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats, listPaiementsByUser } from '../services/paiements';
-import { donsStats, donsByUser } from '../services/dons';
-import { countUsersTotal, listAllUsers } from '../services/users';
+import { paymentsStats } from '../services/paiements';
+import { donsStats } from '../services/dons';
+import { countUsersTotal } from '../services/users';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -173,57 +173,15 @@ function StatCard({ icon, label, value, bg, sub }) {
   );
 }
 
-/* ─── fallbacks stats pour SUPER_ADMIN (endpoints liste) ─────── */
-
-// Déclenche le fallback pour toute erreur serveur (403, 500) ou accès refusé
-const shouldFallback = (reason) => {
+/* ─── description code erreur HTTP ───────────────────────────── */
+const httpErrorLabel = (reason) => {
   const status = reason?.response?.status;
-  if (!status) return false;
-  return status === 403 || status === 500 || status >= 400;
+  const msg = reason?.response?.data?.message || reason?.response?.data || '';
+  if (status === 403) return `Accès refusé (403)`;
+  if (status === 500) return `Erreur serveur backend (500)`;
+  if (status === 404) return `Endpoint introuvable (404)`;
+  return msg || reason?.message || `Erreur inconnue`;
 };
-
-// Normalise n'importe quelle réponse en tableau d'éléments
-const toList = (raw) => {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  if (Array.isArray(raw.content)) return raw.content;
-  if (Array.isArray(raw.data)) return raw.data;
-  return [];
-};
-
-// Fallback paiements : GET /paiements/utilisateur/{id} par utilisateur
-async function computePayStatsFromList() {
-  const users = toList(await listAllUsers());
-  const results = await Promise.allSettled(users.map((u) => listPaiementsByUser(u.id)));
-  let total = 0;
-  let nbTransactions = 0;
-  const payeursSet = new Set();
-  results.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      const list = toList(r.value);
-      list.forEach((p) => { total += Number(p.montant) || 0; nbTransactions++; });
-      if (list.length > 0) payeursSet.add(users[i].id);
-    }
-  });
-  return { totalMontant: total, nombrePaiements: nbTransactions, utilisateursUniques: payeursSet.size };
-}
-
-// Fallback dons : GET /dons/utilisateur/{id} par utilisateur
-async function computeDonStatsFromList() {
-  const users = toList(await listAllUsers());
-  const results = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
-  let total = 0;
-  let nbDons = 0;
-  const donateursSet = new Set();
-  results.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      const list = toList(r.value);
-      list.forEach((d) => { total += Number(d.montant) || 0; nbDons++; });
-      if (list.length > 0) donateursSet.add(users[i].id);
-    }
-  });
-  return { totalDons: total, nombreDons: nbDons, donateurs: donateursSet.size, moyenneDon: nbDons > 0 ? total / nbDons : 0 };
-}
 
 /* ─── dashboard statistiques admin ───────────────────────────── */
 
@@ -246,30 +204,14 @@ function AdminStatsDashboard() {
 
     if (payRes.status === 'fulfilled') {
       setPayData(payRes.value);
-    } else if (shouldFallback(payRes.reason)) {
-      // Fallback : calcul depuis la liste complète des paiements
-      try {
-        const fallback = await computePayStatsFromList();
-        setPayData(fallback);
-      } catch {
-        errs.pay = 'Paiements : données non disponibles';
-      }
     } else {
-      errs.pay = payRes.reason?.response?.data?.message || payRes.reason?.message || 'Erreur paiements';
+      errs.pay = httpErrorLabel(payRes.reason);
     }
 
     if (donRes.status === 'fulfilled') {
       setDonData(donRes.value);
-    } else if (shouldFallback(donRes.reason)) {
-      // Fallback : calcul depuis la liste complète des dons
-      try {
-        const fallback = await computeDonStatsFromList();
-        setDonData(fallback);
-      } catch {
-        errs.don = 'Dons : données non disponibles';
-      }
     } else {
-      errs.don = donRes.reason?.response?.data?.message || donRes.reason?.message || 'Erreur dons';
+      errs.don = httpErrorLabel(donRes.reason);
     }
 
     if (userRes.status === 'fulfilled') {
@@ -322,13 +264,21 @@ function AdminStatsDashboard() {
            ? (Object.values(userData).find((v) => typeof v === 'number') ?? 0)
            : 0));
 
-  const anyError = Object.values(apiErrors).some(Boolean);
+  const errorEntries = Object.entries(apiErrors).filter(([, v]) => v);
 
   return (
     <div>
-      {anyError && (
-        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(198,40,40,0.08)', border: '1px solid rgba(198,40,40,0.2)', fontSize: 13, color: '#c62828' }}>
-          {Object.entries(apiErrors).filter(([, v]) => v).map(([k, v]) => <div key={k}>{v}</div>)}
+      {errorEntries.length > 0 && (
+        <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 8, background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.3)', fontSize: 13 }}>
+          <p style={{ margin: '0 0 6px', fontWeight: 700, color: '#e65100' }}>⚠ Certaines statistiques sont indisponibles (problème backend)</p>
+          {errorEntries.map(([k, v]) => (
+            <div key={k} style={{ color: '#bf360c', marginTop: 2 }}>
+              {k === 'pay' ? 'Paiements' : k === 'don' ? 'Dons' : 'Utilisateurs'} : {v}
+            </div>
+          ))}
+          <p style={{ margin: '8px 0 0', fontSize: 11, color: '#795548' }}>
+            Ces endpoints retournent une erreur côté serveur. Contacter l'équipe backend pour corriger /paiements/stats et /dons/admin/stats.
+          </p>
         </div>
       )}
       {/* En-tête avec heure de mise à jour et refresh */}
@@ -358,63 +308,75 @@ function AdminStatsDashboard() {
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
         Paiements &amp; Recharges
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <StatCard
-          icon={<FaMoneyBillWave size={18} color="white" />}
-          label="Total encaissé"
-          value={formatCurrencyFull(totalEncaisse)}
-          bg="linear-gradient(135deg,#1b5e20,#2e7d32)"
-        />
-        <StatCard
-          icon={<FaChartBar size={18} color="white" />}
-          label="Transactions"
-          value={nbTransactions.toLocaleString('fr-CA')}
-          bg="linear-gradient(135deg,#0d47a1,#1565c0)"
-        />
-        <StatCard
-          icon={<FaUsers size={18} color="white" />}
-          label="Utilisateurs payeurs"
-          value={nbPayeurs > 0 ? nbPayeurs.toLocaleString('fr-CA') : nbUsers.toLocaleString('fr-CA')}
-          bg="linear-gradient(135deg,#4a148c,#6a1b9a)"
-        />
-        <StatCard
-          icon={<FaWallet size={18} color="white" />}
-          label="Paiement moyen"
-          value={formatCurrencyFull(moyennePaiement)}
-          bg="linear-gradient(135deg,#bf360c,#e64a19)"
-        />
-      </div>
+      {apiErrors.pay ? (
+        <div style={{ padding: '14px 16px', borderRadius: 8, background: '#f5f5f5', color: '#757575', fontSize: 13, marginBottom: 20 }}>
+          Statistiques paiements indisponibles — erreur backend ({apiErrors.pay})
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+          <StatCard
+            icon={<FaMoneyBillWave size={18} color="white" />}
+            label="Total encaissé"
+            value={formatCurrencyFull(totalEncaisse)}
+            bg="linear-gradient(135deg,#1b5e20,#2e7d32)"
+          />
+          <StatCard
+            icon={<FaChartBar size={18} color="white" />}
+            label="Transactions"
+            value={nbTransactions.toLocaleString('fr-CA')}
+            bg="linear-gradient(135deg,#0d47a1,#1565c0)"
+          />
+          <StatCard
+            icon={<FaUsers size={18} color="white" />}
+            label="Utilisateurs payeurs"
+            value={nbPayeurs > 0 ? nbPayeurs.toLocaleString('fr-CA') : nbUsers.toLocaleString('fr-CA')}
+            bg="linear-gradient(135deg,#4a148c,#6a1b9a)"
+          />
+          <StatCard
+            icon={<FaWallet size={18} color="white" />}
+            label="Paiement moyen"
+            value={formatCurrencyFull(moyennePaiement)}
+            bg="linear-gradient(135deg,#bf360c,#e64a19)"
+          />
+        </div>
+      )}
 
       {/* Section dons */}
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
         Dons
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <StatCard
-          icon={<FaHandHoldingHeart size={18} color="white" />}
-          label="Total des dons"
-          value={formatCurrencyFull(totalDons)}
-          bg="linear-gradient(135deg,#880e4f,#ad1457)"
-        />
-        <StatCard
-          icon={<FaChartBar size={18} color="white" />}
-          label="Nombre de dons"
-          value={nombreDons.toLocaleString('fr-CA')}
-          bg="linear-gradient(135deg,#e65100,#f57c00)"
-        />
-        <StatCard
-          icon={<FaUsers size={18} color="white" />}
-          label="Donateurs uniques"
-          value={nbDonateurs.toLocaleString('fr-CA')}
-          bg="linear-gradient(135deg,#006064,#00838f)"
-        />
-        <StatCard
-          icon={<FaWallet size={18} color="white" />}
-          label="Don moyen"
-          value={formatCurrencyFull(moyenneDon)}
-          bg="linear-gradient(135deg,#1a237e,#283593)"
-        />
-      </div>
+      {apiErrors.don ? (
+        <div style={{ padding: '14px 16px', borderRadius: 8, background: '#f5f5f5', color: '#757575', fontSize: 13, marginBottom: 20 }}>
+          Statistiques dons indisponibles — erreur backend ({apiErrors.don})
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+          <StatCard
+            icon={<FaHandHoldingHeart size={18} color="white" />}
+            label="Total des dons"
+            value={formatCurrencyFull(totalDons)}
+            bg="linear-gradient(135deg,#880e4f,#ad1457)"
+          />
+          <StatCard
+            icon={<FaChartBar size={18} color="white" />}
+            label="Nombre de dons"
+            value={nombreDons.toLocaleString('fr-CA')}
+            bg="linear-gradient(135deg,#e65100,#f57c00)"
+          />
+          <StatCard
+            icon={<FaUsers size={18} color="white" />}
+            label="Donateurs uniques"
+            value={nbDonateurs.toLocaleString('fr-CA')}
+            bg="linear-gradient(135deg,#006064,#00838f)"
+          />
+          <StatCard
+            icon={<FaWallet size={18} color="white" />}
+            label="Don moyen"
+            value={formatCurrencyFull(moyenneDon)}
+            bg="linear-gradient(135deg,#1a237e,#283593)"
+          />
+        </div>
+      )}
 
       {/* Section utilisateurs */}
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>

@@ -6,9 +6,11 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { REALTIME_INTERVALS } from '../config/realtime';
-import { paymentsStats, totalByUser, listPaiementsByUser } from '../services/paiements';
-import { donsStats, donsByUser } from '../services/dons';
-import { countUsersTotal, listAllUsers } from '../services/users';
+import { paymentsStats } from '../services/paiements';
+import { donsStats, listAllDons } from '../services/dons';
+import { countUsersTotal } from '../services/users';
+import { allCotisations } from '../services/cotisations';
+import { listDossiers } from '../services/dossiers';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -173,7 +175,7 @@ function StatCard({ icon, label, value, bg, sub }) {
   );
 }
 
-/* ─── helpers fallback ────────────────────────────────────────── */
+/* ─── helpers ─────────────────────────────────────────────────── */
 
 const toList = (raw) => {
   if (!raw) return [];
@@ -183,65 +185,35 @@ const toList = (raw) => {
   return [];
 };
 
-const extractNum = (v) => {
-  if (!v && v !== 0) return 0;
-  if (typeof v === 'number') return v;
-  if (typeof v === 'object') {
-    const n = v.total ?? v.montant ?? v.montantTotal ?? v.totalPaiements ?? v.totalDons
-      ?? Object.values(v).find((x) => typeof x === 'number');
-    return Number.isFinite(Number(n)) ? Number(n) : 0;
-  }
-  return Number(v) || 0;
-};
-
-// Tente les endpoints par utilisateur — ne spam pas (une seule passe)
-async function fallbackPayStats() {
-  const users = toList(await listAllUsers());
-  if (users.length === 0) return null;
-  // Tenter totalByUser (GET /paiements/utilisateur/{id}/total)
-  const totals = await Promise.allSettled(users.map((u) => totalByUser(u.id)));
-  const anyTotalOk = totals.some((r) => r.status === 'fulfilled');
-  if (anyTotalOk) {
-    let total = 0; let payeurs = 0;
-    totals.forEach((r) => {
-      if (r.status === 'fulfilled') {
-        const v = extractNum(r.value);
-        total += v;
-        if (v > 0) payeurs++;
-      }
-    });
-    return { totalMontant: total, nombrePaiements: payeurs, utilisateursUniques: payeurs };
-  }
-  // Tenter listPaiementsByUser (GET /paiements/utilisateur/{id})
-  const lists = await Promise.allSettled(users.map((u) => listPaiementsByUser(u.id)));
-  const anyListOk = lists.some((r) => r.status === 'fulfilled');
-  if (!anyListOk) return null;
-  let total = 0; let nb = 0; const payeursSet = new Set();
-  lists.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      const list = toList(r.value);
-      list.forEach((p) => { total += Number(p.montant) || 0; nb++; });
-      if (list.length > 0) payeursSet.add(users[i].id);
-    }
-  });
-  return { totalMontant: total, nombrePaiements: nb, utilisateursUniques: payeursSet.size };
+// Récupère toutes les pages d'un endpoint paginé
+async function fetchAllPages(fetcher, pageSize = 500) {
+  const first = await fetcher({ page: 0, size: pageSize });
+  const list = toList(first);
+  const total = first?.totalPages ?? 1;
+  if (total <= 1) return list;
+  const rest = await Promise.all(
+    Array.from({ length: total - 1 }, (_, i) => fetcher({ page: i + 1, size: pageSize }).then(toList))
+  );
+  return [...list, ...rest.flat()];
 }
 
+// Fallback dons via GET /dons/admin/tous (accessible SUPER_ADMIN)
 async function fallbackDonStats() {
-  const users = toList(await listAllUsers());
-  if (users.length === 0) return null;
-  const lists = await Promise.allSettled(users.map((u) => donsByUser(u.id)));
-  const anyOk = lists.some((r) => r.status === 'fulfilled');
-  if (!anyOk) return null;
-  let total = 0; let nb = 0; const donateursSet = new Set();
-  lists.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      const list = toList(r.value);
-      list.forEach((d) => { total += Number(d.montant) || 0; nb++; });
-      if (list.length > 0) donateursSet.add(users[i].id);
-    }
-  });
-  return { totalDons: total, nombreDons: nb, donateurs: donateursSet.size, moyenneDon: nb > 0 ? total / nb : 0 };
+  const list = await fetchAllPages((p) => listAllDons(p));
+  if (list.length === 0) return null;
+  const total = list.reduce((s, d) => s + (Number(d.montant) || 0), 0);
+  const donateurs = new Set(list.map((d) => d.utilisateurId ?? d.utilisateur?.id).filter(Boolean)).size;
+  return { totalDons: total, nombreDons: list.length, donateurs, moyenneDon: list.length > 0 ? total / list.length : 0 };
+}
+
+// Fallback paiements via cotisations (si paiements/stats inaccessible)
+// Utilise GET /cotisations/admin/toutes pour estimer l'encaissement
+async function fallbackPayViaCotisations() {
+  const list = await fetchAllPages((p) => allCotisations(p));
+  if (list.length === 0) return null;
+  const total = list.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  const payeurs = new Set(list.map((c) => c.utilisateurId ?? c.utilisateur?.id).filter(Boolean)).size;
+  return { totalMontant: total, nombrePaiements: list.length, utilisateursUniques: payeurs, source: 'cotisations' };
 }
 
 /* ─── dashboard statistiques admin ───────────────────────────── */
@@ -266,9 +238,9 @@ function AdminStatsDashboard() {
     if (payRes.status === 'fulfilled') {
       setPayData(payRes.value);
     } else {
-      // Endpoint stats indisponible → fallback par utilisateur
+      // Fallback via cotisations si /paiements/stats indisponible
       try {
-        const fb = await fallbackPayStats();
+        const fb = await fallbackPayViaCotisations();
         if (fb) { setPayData(fb); }
         else { errs.pay = `Paiements (${payRes.reason?.response?.status ?? '?'})`; }
       } catch {

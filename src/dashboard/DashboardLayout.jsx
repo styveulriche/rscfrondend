@@ -136,23 +136,50 @@ function DashboardLayout() {
         </div>
 
         <ul className="sidebar-menu">
-          {computedMenuItems.map(({ path, label, Icon }) => (
-            <li key={path}>
-              {profileLocked ? (
-                <span style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', opacity: 0.4, cursor: 'not-allowed', fontSize: 14 }}>
-                  <Icon size={15} style={{ marginRight: 10, flexShrink: 0 }} />
-                  {label}
-                  <FaLock size={10} style={{ marginLeft: 'auto' }} />
-                </span>
-              ) : (
-                <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
-                  onClick={() => setSidebarOpen(false)}>
-                  <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
-                  {label}
-                </Link>
-              )}
-            </li>
-          ))}
+          {computedMenuItems.map(({ path, label, Icon }) => {
+            const isActu = path === 'actualites';
+            return (
+              <li key={path}>
+                {profileLocked ? (
+                  <span style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', opacity: 0.4, cursor: 'not-allowed', fontSize: 14 }}>
+                    <Icon size={15} style={{ marginRight: 10, flexShrink: 0 }} />
+                    {label}
+                    <FaLock size={10} style={{ marginLeft: 'auto' }} />
+                  </span>
+                ) : isActu ? (
+                  <Link
+                    to="/dashboard/actualites"
+                    onClick={() => setSidebarOpen(false)}
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      margin: '6px 10px', padding: '9px 14px',
+                      borderRadius: 10,
+                      background: currentPath === 'actualites' ? '#15803d' : '#16a34a',
+                      color: 'white', fontWeight: 700, fontSize: 13,
+                      textDecoration: 'none',
+                      animation: 'navActuPulse 1.4s ease-in-out infinite',
+                      boxShadow: '0 0 0 0 rgba(22,163,74,0.7)',
+                    }}
+                  >
+                    <Icon size={15} style={{ marginRight: 10, flexShrink: 0 }} />
+                    {label}
+                    <span style={{
+                      marginLeft: 'auto', width: 8, height: 8,
+                      borderRadius: '50%', background: 'white',
+                      animation: 'navActuDot 1.4s ease-in-out infinite',
+                      flexShrink: 0,
+                    }} />
+                  </Link>
+                ) : (
+                  <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
+                    onClick={() => setSidebarOpen(false)}>
+                    <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
+                    {label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
           <li><div className="sidebar-divider" /></li>
           {menuBottom.map(({ path, label, Icon }) => {
             const isParametres = path === 'parametres';

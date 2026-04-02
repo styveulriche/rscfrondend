@@ -30,6 +30,7 @@ import AdminUsers from './dashboard/AdminUsers';
 import DeclarationsAdmin from './dashboard/DeclarationsAdmin';
 import Cotisations from './dashboard/Cotisations';
 import Actualites from './dashboard/Actualites';
+import ActualitesPublic from './pages/ActualitesPublic';
 import './App.css';
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/inscription"  element={<Register />} />
           <Route path="/validation"   element={<Validation />} />
+          <Route path="/actualites"   element={<ActualitesPublic />} />
           <Route path="/dashboard"    element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
             <Route index element={<Navigate to="statistiques" replace />} />
             <Route path="statistiques" element={<Statistics />} />

@@ -42,11 +42,10 @@ function Navbar() {
       </li>
     );
     if (l.isActualites) {
-      const dest = user ? '/dashboard/actualites' : '/login';
       return (
         <li key="actualites">
           <Link
-            to={dest}
+            to="/actualites"
             onClick={() => mobile && setMenuOpen(false)}
             style={{
               display: 'inline-flex',
@@ -128,9 +127,8 @@ function Navbar() {
               <a key="dons" href="#dons" onClick={handleDons}>{l.label}</a>
             );
             if (l.isActualites) {
-              const dest = user ? '/dashboard/actualites' : '/login';
               return (
-                <Link key="actualites" to={dest}
+                <Link key="actualites" to="/actualites"
                   onClick={() => setMenuOpen(false)}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#16a34a', color: '#fff', fontWeight: 700, borderRadius: 8, padding: '10px 16px', textDecoration: 'none', animation: 'navActuPulse 1.4s ease-in-out infinite' }}>
                   <FaNewspaper size={14} />

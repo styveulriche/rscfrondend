@@ -361,6 +361,30 @@ export function AuthProvider({ children }) {
     return hasRoleFromList(userRoles, list);
   }, [userRoles]);
 
+  // Déconnexion automatique après 15 minutes d'inactivité (utilisateurs non-admin uniquement)
+  useEffect(() => {
+    if (!user?.id || isAdmin) return;
+    const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+    let timer = setTimeout(() => {
+      logout();
+      window.location.href = '/login';
+    }, IDLE_TIMEOUT_MS);
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        logout();
+        window.location.href = '/login';
+      }, IDLE_TIMEOUT_MS);
+    };
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach((evt) => document.addEventListener(evt, resetTimer, { passive: true }));
+    return () => {
+      clearTimeout(timer);
+      events.forEach((evt) => document.removeEventListener(evt, resetTimer));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isAdmin]);
+
   return (
     <AuthContext.Provider
       value={{

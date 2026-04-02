@@ -12,9 +12,9 @@ export async function getNotification(id) {
   return res.data;
 }
 
-// GET /notifications/non-lues/compte
+// GET /notifications/non-lues/count
 export async function getUnreadCount() {
-  const res = await api.get('/notifications/non-lues/compte');
+  const res = await api.get('/notifications/non-lues/count');
   return res.data;
 }
 

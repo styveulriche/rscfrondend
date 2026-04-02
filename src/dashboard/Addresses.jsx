@@ -183,12 +183,20 @@ function Addresses() {
                   </div>
                 </div>
                 <div>
-                  <p className="settings-label">Code postal</p>
+                  <p className="settings-label">Code postal <span style={{ color: '#c62828' }}>*</span></p>
                   <input
                     className="form-input"
                     placeholder="H1A 1A1"
                     value={form.codePostal}
-                    onChange={(e) => setForm({ ...form, codePostal: e.target.value })}
+                    pattern="[A-Za-z][0-9][A-Za-z][\s]?[0-9][A-Za-z][0-9]"
+                    title="Code postal canadien requis, ex : H1A 1A1"
+                    maxLength={7}
+                    onChange={(e) => {
+                      const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                      const formatted = raw.length > 3 ? `${raw.slice(0, 3)} ${raw.slice(3, 6)}` : raw;
+                      setForm({ ...form, codePostal: formatted });
+                    }}
+                    required
                   />
                 </div>
                 <div style={{ gridColumn: 'span 1' }}>

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { FaUserFriends, FaUserPlus, FaPhone, FaIdCard, FaUser, FaTag } from 'react-icons/fa';
+import { FaUserFriends, FaUserPlus, FaCalendarAlt, FaIdCard, FaUser, FaTag, FaLink } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -15,10 +15,9 @@ import { REALTIME_INTERVALS } from '../config/realtime';
 
 const MAX = 5;
 const CATEGORIES = [
-  { value: '',                label: '-- Catégorie (optionnel) --' },
-  { value: 'MINEUR',          label: 'Mineur' },
-  { value: 'TROISIEME_AGE',   label: 'Personne du 3e âge' },
-  { value: 'MALADE_INFIRME',  label: 'Personne malade ou infirme' },
+  { value: '',               label: '-- Catégorie (optionnel) --' },
+  { value: 'MINEUR',         label: 'Mineur' },
+  { value: 'MALADE_INFIRME', label: 'Personne malade ou infirme' },
 ];
 
 const categoryLabel = (val) => {
@@ -27,7 +26,7 @@ const categoryLabel = (val) => {
   return CATEGORIES.find((c) => c.value === normalized)?.label || '';
 };
 
-const EMPTY_FORM = { name: '', phone: '', idFile: null, categorie: '' };
+const EMPTY_FORM = { name: '', dateNaissance: '', idFile: null, categorie: '' };
 
 const normalizeList = (payload) => {
   if (!payload) return [];
@@ -68,7 +67,7 @@ const mapItem = (item, idx) => {
     key: item?.id ?? `row-${idx}`,
     id: item?.id ?? null,
     name: item?.nomComplet || item?.name || '—',
-    phone: item?.telephone || item?.phone || '',
+    dateNaissance: item?.dateNaissance || '',
     categorie: item?.categorie || item?.category || '',
     idFileName: item?.pieceIdentiteNom || item?.documentNom || '',
     status,
@@ -90,7 +89,7 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
 const buildPayload = (form) => {
   const payload = {
     nomComplet: form.name,
-    telephone: form.phone,
+    dateNaissance: form.dateNaissance || null,
     categorie: form.categorie || null,
   };
   if (form?.idFile?.content) {
@@ -102,6 +101,9 @@ const buildPayload = (form) => {
 
 function Parrainage() {
   const { user } = useAuth();
+  const parrainageLink = user?.codeParrainage
+    ? `${window.location.origin}/inscription?parrain=${user.codeParrainage}`
+    : null;
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -199,6 +201,17 @@ function Parrainage() {
       <StatsRow />
 
       <div className="content-card">
+        {parrainageLink && (
+          <div style={{ background: 'rgba(139,28,28,0.06)', border: '1px solid rgba(139,28,28,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <FaLink size={13} color="var(--red-primary)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red-primary)' }}>Mon lien de parrainage :</span>
+            <a href={parrainageLink} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 12, color: 'var(--red-primary)', wordBreak: 'break-all', textDecoration: 'underline' }}>
+              {parrainageLink}
+            </a>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
@@ -263,10 +276,12 @@ function Parrainage() {
                 </div>
                 <FaUser size={18} color="rgba(255,255,255,0.5)" style={{ marginBottom: 6 }} />
                 <p className="beneficiary-name">{f.name}</p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <FaPhone size={11} color="rgba(255,255,255,0.7)" />
-                  <p className="beneficiary-phone">{f.phone}</p>
-                </div>
+                {f.dateNaissance && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <FaCalendarAlt size={11} color="rgba(255,255,255,0.7)" />
+                    <p className="beneficiary-phone">{new Date(f.dateNaissance).toLocaleDateString('fr-CA')}</p>
+                  </div>
+                )}
                 {f.categorie && (
                   <span className="fiolle-badge">
                     <FaTag size={8} style={{ marginRight: 4, verticalAlign: 'middle' }} />
@@ -308,10 +323,11 @@ function Parrainage() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div style={{ position: 'relative' }}>
-                <FaPhone size={13} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                <input className="form-input" style={{ paddingLeft: 36 }} type="tel"
-                  placeholder="Numéro de téléphone" value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+                <FaCalendarAlt size={13} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
+                <input className="form-input" style={{ paddingLeft: 36 }} type="date"
+                  value={form.dateNaissance}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setForm({ ...form, dateNaissance: e.target.value })} />
               </div>
               <select
                 className="form-input"

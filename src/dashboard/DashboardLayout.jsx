@@ -15,19 +15,18 @@ const baseMenuItems = [
   { path: 'statistiques',  label: 'Statistiques',            Icon: FaChartBar },
   { path: 'finances',      label: 'Finances',                Icon: FaWallet },
   { path: 'don',           label: 'Faire un don',            Icon: FaHandHoldingHeart },
-  { path: 'cotisations',  label: 'Cotisations',             Icon: FaFileInvoiceDollar },
-  { path: 'adresses',      label: 'Adresses',                Icon: FaMapMarkerAlt },
   { path: 'ayant-droit',   label: 'Mes ayants droit',        Icon: FaUsers,   userOnly: true },
   { path: 'parrainage',    label: 'Parrainage & références', Icon: FaUserFriends, userOnly: true },
-  { path: 'signaler',      label: 'Signaler événement',      Icon: FaExclamationCircle },
+  { path: 'signaler',      label: 'Signaler un décès',       Icon: FaExclamationCircle },
   { path: 'suivi',         label: 'Suivi',                   Icon: FaSearch },
 ];
 
 const menuBottom = [
   { path: 'profil',        label: 'Mon profil',     Icon: FaUserCircle },
-  { path: 'messagerie',    label: 'Messagerie',    Icon: FaEnvelope },
-  { path: 'notifications', label: 'Notifications', Icon: FaBell },
-  { path: 'parametres',    label: 'Paramètres',    Icon: FaCog },
+  { path: 'messagerie',    label: 'Messagerie',     Icon: FaEnvelope },
+  { path: 'adresses',      label: 'Adresses',       Icon: FaMapMarkerAlt },
+  { path: 'notifications', label: 'Notifications',  Icon: FaBell },
+  { path: 'parametres',    label: 'Paramètres',     Icon: FaCog },
 ];
 
 

@@ -5,19 +5,20 @@ import { updateUser as updateUserService } from '../services/users';
 import { StatsRow } from './Statistics';
 
 const STATUT_DIASPORA_OPTIONS = [
-  { value: 'RESIDENT_PERMANENT', label: 'Résident permanent' },
+  { value: 'RESIDENT_PERMANENT', label: 'Résident' },
   { value: 'CITOYEN_CANADIEN', label: 'Citoyen canadien' },
   { value: 'ETUDIANT_INTERNATIONAL', label: 'Étudiant international' },
   { value: 'TRAVAILLEUR_TEMPORAIRE', label: 'Travailleur temporaire' },
-  { value: 'VISITEUR_LONG_SEJOUR', label: 'Visiteur long séjour' },
   { value: 'REFUGIE', label: 'Réfugié' },
 ];
 
 const PAYS_OPTIONS = [
   'Cameroun', "Côte d'Ivoire", 'Sénégal', 'Mali', 'Guinée', 'Bénin',
   'Burkina Faso', 'Togo', 'Niger', 'Congo', 'RD Congo', 'Gabon',
-  'Madagascar', 'Mauritanie', 'Haïti', 'Maroc', 'Tunisie', 'Algérie', 'Autre',
+  'Madagascar', 'Mauritanie', 'Haïti', 'Autre',
 ];
+
+const CA_PHONE_PATTERN = '(\\+?1[\\s\\-]?)?\\(?[2-9][0-9]{2}\\)?[\\s\\-]?[0-9]{3}[\\s\\-]?[0-9]{4}';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -128,6 +129,19 @@ function Profile() {
                   Code parrainage : <strong>{user.codeParrainage}</strong>
                 </span>
               )}
+              {user?.codeParrainage && (
+                <span style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(139,28,28,0.08)', border: '1px solid rgba(139,28,28,0.2)', padding: '4px 10px', borderRadius: 999, flexWrap: 'wrap' }}>
+                  Lien de parrainage :&nbsp;
+                  <a
+                    href={`${window.location.origin}/inscription?parrain=${user.codeParrainage}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--red-primary)', fontWeight: 600, wordBreak: 'break-all' }}
+                  >
+                    {`${window.location.origin}/inscription?parrain=${user.codeParrainage}`}
+                  </a>
+                </span>
+              )}
             </div>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-gray)', textAlign: 'right' }}>
@@ -223,6 +237,8 @@ function Profile() {
                     style={{ paddingLeft: 32 }}
                     type="tel"
                     placeholder="+1 514 000 0000"
+                    pattern={CA_PHONE_PATTERN}
+                    title="Numéro canadien requis, ex : +1 514 000 0000"
                     value={form.telephone}
                     onChange={(e) => setForm({ ...form, telephone: e.target.value })}
                   />

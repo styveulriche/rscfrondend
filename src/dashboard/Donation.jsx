@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   FaHandHoldingHeart, FaCheckCircle, FaTimes,
-  FaChevronDown, FaChevronUp, FaSearch,
-  FaMoneyBillWave, FaUsers, FaChartBar, FaWallet,
+  FaSearch, FaMoneyBillWave, FaUsers, FaChartBar, FaWallet,
 } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
@@ -211,14 +210,16 @@ function AdminDonationView() {
 
 /* ─── modal confirmation portefeuille ────────────────────────── */
 
-const presetAmounts = [500, 1000, 1500, 5000];
+const SERVICE_FEE_RATE = 0.02; // 2% frais de service
 
 function WalletDonationModal({ amount, message, campagne, balance, onConfirm, onClose }) {
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [done, setDone] = useState(false);
   const solde = Number(balance) || 0;
-  const soldeApres = solde - amount;
+  const fraisService = Math.round(amount * SERVICE_FEE_RATE * 100) / 100;
+  const totalDebite = amount + fraisService;
+  const soldeApres = solde - totalDebite;
   // La validation du solde est gérée côté backend — on ne bloque pas côté frontend
   const insuffisant = false;
 
@@ -267,8 +268,10 @@ function WalletDonationModal({ amount, message, campagne, balance, onConfirm, on
             <div style={{ background: 'var(--pink-ultra-light)', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
               {[
                 { l: 'Montant du don', v: `${amount} $`, bold: true },
+                { l: `Frais de service (${SERVICE_FEE_RATE * 100}%)`, v: `${fraisService.toFixed(2)} $`, color: '#888' },
+                { l: 'Total débité', v: `${totalDebite.toFixed(2)} $`, bold: true },
                 { l: 'Solde actuel', v: `${solde} $` },
-                { l: 'Solde après don', v: `${soldeApres} $`, color: soldeApres < 0 ? '#c62828' : '#2e7d32' },
+                { l: 'Solde après don', v: `${soldeApres.toFixed(2)} $`, color: soldeApres < 0 ? '#c62828' : '#2e7d32' },
                 ...(campagne ? [{ l: 'Campagne', v: campagne }] : []),
               ].map(({ l, v, bold, color }) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -412,18 +415,9 @@ function UserDonationView() {
         )}
 
         <p className="donation-section-title" style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
-          Choisir un montant
+          Saisir un montant
         </p>
-        <div className="amount-buttons" style={{ marginBottom: 16 }}>
-          {presetAmounts.map((a) => (
-            <button key={a} className={`btn-amount ${selected === a ? 'selected' : ''}`}
-              onClick={() => { setSelected(a); setCustom(''); resetStatus(); }}>
-              {a} $
-            </button>
-          ))}
-        </div>
-
-        <input className="donation-input" type="number" placeholder="Autre montant ($)"
+        <input className="donation-input" type="number" placeholder="Montant du don ($)"
           value={custom} onChange={(e) => { setCustom(e.target.value); setSelected(null); resetStatus(); }} min="1"
           style={{ marginBottom: 12 }} />
 

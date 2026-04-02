@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { isProfileIncomplete } from '../components/PrivateRoute';
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
@@ -8,19 +7,20 @@ import { updateUser as updateUserService } from '../services/users';
 import api from '../services/api';
 
 const STATUT_DIASPORA_OPTIONS = [
-  { value: 'RESIDENT_PERMANENT', label: 'Résident permanent' },
+  { value: 'RESIDENT_PERMANENT', label: 'Résident' },
   { value: 'CITOYEN_CANADIEN', label: 'Citoyen canadien' },
   { value: 'ETUDIANT_INTERNATIONAL', label: 'Étudiant international' },
   { value: 'TRAVAILLEUR_TEMPORAIRE', label: 'Travailleur temporaire' },
-  { value: 'VISITEUR_LONG_SEJOUR', label: 'Visiteur long séjour' },
   { value: 'REFUGIE', label: 'Réfugié' },
 ];
 
 const PAYS_OPTIONS = [
   'Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Guinée', 'Bénin',
   'Burkina Faso', 'Togo', 'Niger', 'Congo', 'RD Congo', 'Gabon',
-  'Madagascar', 'Mauritanie', 'Haïti', 'Maroc', 'Tunisie', 'Algérie', 'Autre',
+  'Madagascar', 'Mauritanie', 'Haïti', 'Autre',
 ];
+
+const CA_PHONE_PATTERN = '(\\+?1[\\s\\-]?)?\\(?[2-9][0-9]{2}\\)?[\\s\\-]?[0-9]{3}[\\s\\-]?[0-9]{4}';
 
 function Parametres() {
   const { user, updateUser } = useAuth();
@@ -229,6 +229,8 @@ function Parametres() {
                     value={profile.telephone}
                     onChange={(e) => setProfile({ ...profile, telephone: e.target.value })}
                     placeholder="+1 514 000 0000"
+                    pattern={CA_PHONE_PATTERN}
+                    title="Numéro canadien requis, ex : +1 514 000 0000"
                   />
                 </div>
               </div>

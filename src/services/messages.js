@@ -8,7 +8,7 @@ export async function createSupportTicket(payload) {
 }
 
 export async function listMyTickets(params) {
-  const res = await api.get('/messages-support/mes-tickets', { params });
+  const res = await api.get('/messages-support', { params });
   return res.data;
 }
 
@@ -18,7 +18,7 @@ export async function getMyTicketDetail(id) {
 }
 
 export async function replyToMyTicket(id, contenu) {
-  const res = await api.post(`/messages-support/${id}/répondre`, { contenu });
+  const res = await api.post(`/messages-support/${id}/repondre`, { contenu });
   return res.data;
 }
 
@@ -45,6 +45,6 @@ export async function assignTicket(id, adminId) {
 }
 
 export async function adminReplyToTicket(id, contenu) {
-  const res = await api.post(`/admin/messages-support/${id}/répondre`, { contenu });
+  const res = await api.post(`/admin/messages-support/${id}/repondre`, { contenu });
   return res.data;
 }

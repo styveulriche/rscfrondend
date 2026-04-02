@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   FaUserPlus, FaPhone, FaIdCard, FaUser, FaTrash, FaEdit,
-  FaCheck, FaTimes, FaUpload, FaStar, FaKey, FaRedo,
+  FaCheck, FaTimes, FaStar,
 } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
@@ -11,11 +11,11 @@ import {
   updateAyant,
   deleteAyant,
   setAyantPrincipal,
-  getCode,
-  resetCode,
 } from '../services/ayantsDroit';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
+
+const CA_PHONE_PATTERN = '(\\+?1[\\s\\-]?)?\\(?[2-9][0-9]{2}\\)?[\\s\\-]?[0-9]{3}[\\s\\-]?[0-9]{4}';
 
 const MAX = 3;
 
@@ -85,65 +85,61 @@ const buildPayload = (f) => {
   return p;
 };
 
-function CodePanel({ ayantId }) {
-  const [code, setCode] = useState(null);
-  const [codeLoading, setCodeLoading] = useState(false);
-  const [codeMsg, setCodeMsg] = useState(null);
-
-  const handleGetCode = async () => {
-    setCodeLoading(true);
-    setCodeMsg(null);
-    try {
-      const result = await getCode(ayantId);
-      setCode(typeof result === 'string' ? result : result?.code || JSON.stringify(result));
-    } catch {
-      setCodeMsg({ type: 'error', text: 'Impossible de récupérer le code.' });
-    } finally {
-      setCodeLoading(false);
-    }
-  };
-
-  const handleResetCode = async () => {
-    setCodeLoading(true);
-    setCodeMsg(null);
-    setCode(null);
-    try {
-      await resetCode(ayantId);
-      setCodeMsg({ type: 'success', text: 'Code réinitialisé.' });
-    } catch {
-      setCodeMsg({ type: 'error', text: 'Impossible de réinitialiser.' });
-    } finally {
-      setCodeLoading(false);
-    }
-  };
-
+// FormFields est défini HORS du composant AyantsDroit pour éviter
+// le bug de perte de focus (React démonte/remonte si le type du composant change à chaque render)
+function FormFields({ data: fd, onChange, onFileChange }) {
   return (
-    <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(255,255,255,0.12)', borderRadius: 8 }}>
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={handleGetCode}
-          disabled={codeLoading}
-          style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: 'white', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
-        >
-          <FaKey size={9} /> Voir code
-        </button>
-        <button
-          type="button"
-          onClick={handleResetCode}
-          disabled={codeLoading}
-          style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: 'white', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
-        >
-          <FaRedo size={9} /> Reset code
-        </button>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div style={{ position: 'relative' }}>
+          <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
+          <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Prénom *" value={fd.prenom}
+            onChange={(e) => onChange({ ...fd, prenom: e.target.value })} required />
+        </div>
+        <div style={{ position: 'relative' }}>
+          <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
+          <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Nom *" value={fd.nom}
+            onChange={(e) => onChange({ ...fd, nom: e.target.value })} required />
+        </div>
       </div>
-      {code && (
-        <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 18, letterSpacing: 4, margin: '8px 0 4px', color: 'white' }}>{code}</p>
-      )}
-      {codeMsg && (
-        <p style={{ textAlign: 'center', fontSize: 11, margin: '4px 0 0', color: codeMsg.type === 'error' ? '#ffcdd2' : '#c8e6c9' }}>{codeMsg.text}</p>
-      )}
-    </div>
+      <div style={{ position: 'relative' }}>
+        <FaPhone size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
+        <input className="form-input" style={{ paddingLeft: 32 }} type="tel"
+          placeholder="+1 514 000 0000" value={fd.telephone}
+          pattern={CA_PHONE_PATTERN} title="Numéro canadien requis, ex : +1 514 000 0000"
+          onChange={(e) => onChange({ ...fd, telephone: e.target.value })} required />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div>
+          <p className="settings-label" style={{ margin: '0 0 4px', fontSize: 11 }}>Date de naissance</p>
+          <input className="form-input" type="date" value={fd.dateNaissance || ''}
+            onChange={(e) => onChange({ ...fd, dateNaissance: e.target.value })} />
+        </div>
+        <div>
+          <p className="settings-label" style={{ margin: '0 0 4px', fontSize: 11 }}>Sexe</p>
+          <select className="form-input" value={fd.sexe} onChange={(e) => onChange({ ...fd, sexe: e.target.value })}>
+            <option value="">—</option>
+            <option value="M">Masculin</option>
+            <option value="F">Féminin</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+      </div>
+      <select className="form-input" value={fd.lienFamilial} onChange={(e) => onChange({ ...fd, lienFamilial: e.target.value })}>
+        <option value="">Lien familial (optionnel)</option>
+        {LIEN_FAMILIAL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--pink-very-light)', border: '2px dashed var(--pink-light)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', marginBottom: 4 }}>
+        <FaIdCard size={15} color="var(--pink-card)" />
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 600, color: fd?.idFile?.name ? 'var(--red-primary)' : 'var(--pink-card)', margin: 0 }}>
+            {fd?.idFile?.name || 'Pièce d\'identité (optionnel)'}
+          </p>
+          <p style={{ fontSize: 10, color: 'var(--text-gray)', margin: 0 }}>JPG, PNG, PDF</p>
+        </div>
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={onFileChange} />
+      </label>
+    </>
   );
 }
 
@@ -254,58 +250,6 @@ function AyantsDroit() {
     }
   };
 
-  const FormFields = ({ data: fd, onChange, fileMode }) => (
-    <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div style={{ position: 'relative' }}>
-          <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-          <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Prénom *" value={fd.prenom}
-            onChange={(e) => onChange({ ...fd, prenom: e.target.value })} required />
-        </div>
-        <div style={{ position: 'relative' }}>
-          <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-          <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Nom *" value={fd.nom}
-            onChange={(e) => onChange({ ...fd, nom: e.target.value })} required />
-        </div>
-      </div>
-      <div style={{ position: 'relative' }}>
-        <FaPhone size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-        <input className="form-input" style={{ paddingLeft: 32 }} type="tel" placeholder="Téléphone *" value={fd.telephone}
-          onChange={(e) => onChange({ ...fd, telephone: e.target.value })} required />
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div>
-          <p className="settings-label" style={{ margin: '0 0 4px', fontSize: 11 }}>Date de naissance</p>
-          <input className="form-input" type="date" value={fd.dateNaissance || ''}
-            onChange={(e) => onChange({ ...fd, dateNaissance: e.target.value })} />
-        </div>
-        <div>
-          <p className="settings-label" style={{ margin: '0 0 4px', fontSize: 11 }}>Sexe</p>
-          <select className="form-input" value={fd.sexe} onChange={(e) => onChange({ ...fd, sexe: e.target.value })}>
-            <option value="">—</option>
-            <option value="M">Masculin</option>
-            <option value="F">Féminin</option>
-            <option value="Autre">Autre</option>
-          </select>
-        </div>
-      </div>
-      <select className="form-input" value={fd.lienFamilial} onChange={(e) => onChange({ ...fd, lienFamilial: e.target.value })}>
-        <option value="">Lien familial (optionnel)</option>
-        {LIEN_FAMILIAL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--pink-very-light)', border: '2px dashed var(--pink-light)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', marginBottom: 4 }}>
-        <FaIdCard size={15} color="var(--pink-card)" />
-        <div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: fd?.idFile?.name ? 'var(--red-primary)' : 'var(--pink-card)', margin: 0 }}>
-            {fd?.idFile?.name || 'Pièce d\'identité (optionnel)'}
-          </p>
-          <p style={{ fontSize: 10, color: 'var(--text-gray)', margin: 0 }}>JPG, PNG, PDF</p>
-        </div>
-        <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={(e) => handleFile(e, fileMode)} />
-      </label>
-    </>
-  );
-
   return (
     <div>
       <StatsRow />
@@ -339,7 +283,7 @@ function AyantsDroit() {
               <div key={b.key} className={`beneficiary-card ${i % 2 === 0 ? 'dark' : ''}`} style={{ position: 'relative' }}>
                 {isEditing ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                    <FormFields data={editData} onChange={setEditData} fileMode="edit" />
+                    <FormFields data={editData} onChange={setEditData} onFileChange={(e) => handleFile(e, 'edit')} />
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                       <button onClick={saveEdit} disabled={isBusy} style={{ background: 'rgba(46,125,50,0.8)', border: 'none', borderRadius: 6, padding: '5px 14px', cursor: 'pointer', color: 'white', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <FaCheck size={10} /> Sauver
@@ -398,8 +342,6 @@ function AyantsDroit() {
                     {b.idFileName && (
                       <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>📎 {b.idFileName}</p>
                     )}
-
-                    {b.id && <CodePanel ayantId={b.id} />}
                   </>
                 )}
               </div>
@@ -411,7 +353,7 @@ function AyantsDroit() {
           <>
             <h4 className="form-section-title" style={{ marginTop: 16 }}>Ajouter un ayant droit</h4>
             <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <FormFields data={form} onChange={setForm} fileMode="form" />
+              <FormFields data={form} onChange={setForm} onFileChange={(e) => handleFile(e, 'form')} />
               <button type="submit" className="btn-add" disabled={formLoading} style={{ marginTop: 4 }}>
                 <FaUserPlus size={13} style={{ marginRight: 8, verticalAlign: 'middle' }} />
                 {formLoading ? 'Ajout en cours…' : 'Ajouter'}

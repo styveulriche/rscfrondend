@@ -3,10 +3,6 @@ import {
   FaExclamationTriangle,
   FaMapMarkerAlt,
   FaCalendarAlt,
-  FaUser,
-  FaEnvelope,
-  FaPhone,
-  FaHeart,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { StatsRow } from './Statistics';
@@ -17,8 +13,7 @@ import { REALTIME_INTERVALS } from '../config/realtime';
 const PAYS_OPTIONS = [
   'Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Guinée', 'Bénin',
   'Burkina Faso', 'Togo', 'Niger', 'Congo', 'RD Congo', 'Gabon',
-  'Madagascar', 'Mauritanie', 'Haïti', 'Maroc', 'Tunisie', 'Algérie',
-  'Autre',
+  'Madagascar', 'Mauritanie', 'Haïti', 'Autre',
 ];
 
 const INITIAL_FORM = {
@@ -26,11 +21,6 @@ const INITIAL_FORM = {
   dateDeces: '',
   lieuDeces: '',
   causeDeces: '',
-  declarantNom: '',
-  declarantPrenom: '',
-  declarantEmail: '',
-  declarantTelephone: '',
-  declarantLien: '',
 };
 
 const normalizeList = (payload) => {
@@ -107,10 +97,6 @@ function SignalerEvenement() {
       setStatus({ type: 'error', message: 'Veuillez remplir tous les champs obligatoires du décès.' });
       return;
     }
-    if (!form.declarantNom || !form.declarantPrenom || !form.declarantTelephone) {
-      setStatus({ type: 'error', message: 'Les informations du déclarant (nom, prénom, téléphone) sont requises.' });
-      return;
-    }
     setSubmitting(true);
     setStatus(null);
     try {
@@ -119,13 +105,6 @@ function SignalerEvenement() {
         dateDeces: form.dateDeces,
         lieuDeces: form.lieuDeces,
         causeDeces: form.causeDeces,
-        declarant: {
-          nom: form.declarantNom,
-          prenom: form.declarantPrenom,
-          email: form.declarantEmail || null,
-          telephone: form.declarantTelephone,
-          lienAvecAssocie: form.declarantLien || null,
-        },
       };
       await createDeclaration(user.id, payload);
       setStatus({ type: 'success', message: 'Déclaration enregistrée. Notre équipe vous contactera dans les plus brefs délais.' });
@@ -243,104 +222,6 @@ function SignalerEvenement() {
                   style={{ resize: 'vertical' }}
                   required
                 />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2 — Déclarant */}
-          <div className="settings-section" style={{ marginTop: 20 }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: 'var(--red-primary)' }}>
-              Informations du déclarant
-            </h4>
-            <div className="settings-grid">
-              <div>
-                <p className="settings-label">
-                  Nom <span style={{ color: '#c62828' }}>*</span>
-                </p>
-                <div style={{ position: 'relative' }}>
-                  <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                  <input
-                    className="form-input"
-                    style={{ paddingLeft: 32 }}
-                    type="text"
-                    placeholder="Nom de famille"
-                    value={form.declarantNom}
-                    onChange={setField('declarantNom')}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="settings-label">
-                  Prénom <span style={{ color: '#c62828' }}>*</span>
-                </p>
-                <div style={{ position: 'relative' }}>
-                  <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                  <input
-                    className="form-input"
-                    style={{ paddingLeft: 32 }}
-                    type="text"
-                    placeholder="Prénom"
-                    value={form.declarantPrenom}
-                    onChange={setField('declarantPrenom')}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="settings-label">Email</p>
-                <div style={{ position: 'relative' }}>
-                  <FaEnvelope size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                  <input
-                    className="form-input"
-                    style={{ paddingLeft: 32 }}
-                    type="email"
-                    placeholder="email@exemple.com"
-                    value={form.declarantEmail}
-                    onChange={setField('declarantEmail')}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="settings-label">
-                  Téléphone <span style={{ color: '#c62828' }}>*</span>
-                </p>
-                <div style={{ position: 'relative' }}>
-                  <FaPhone size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                  <input
-                    className="form-input"
-                    style={{ paddingLeft: 32 }}
-                    type="tel"
-                    placeholder="+1 514 000 0000"
-                    value={form.declarantTelephone}
-                    onChange={setField('declarantTelephone')}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ gridColumn: 'span 2' }}>
-                <p className="settings-label">Lien avec le défunt</p>
-                <div style={{ position: 'relative' }}>
-                  <FaHeart size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                  <select
-                    className="form-input"
-                    style={{ paddingLeft: 32 }}
-                    value={form.declarantLien}
-                    onChange={setField('declarantLien')}
-                  >
-                    <option value="">Sélectionner le lien (optionnel)</option>
-                    <option value="Conjoint(e)">Conjoint(e)</option>
-                    <option value="Enfant">Enfant</option>
-                    <option value="Parent">Parent</option>
-                    <option value="Frère / Sœur">Frère / Sœur</option>
-                    <option value="Ami(e) proche">Ami(e) proche</option>
-                    <option value="Autre">Autre</option>
-                  </select>
-                </div>
               </div>
             </div>
           </div>

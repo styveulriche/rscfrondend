@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaBars, FaTimes } from 'react-icons/fa';
+import { FaBars, FaTimes, FaNewspaper } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import t from '../i18n/translations';
@@ -27,6 +27,7 @@ function Navbar() {
     { to: '/nos-services',  label: T.services, exact: false },
     { isDons: true,         label: T.donate },
     { to: '/contact',       label: T.contact,  exact: false },
+    { isActualites: true,   label: 'Actualités' },
   ];
 
   const isActive = (to, exact) => exact ? path === to : path.startsWith(to);
@@ -40,6 +41,42 @@ function Navbar() {
         </a>
       </li>
     );
+    if (l.isActualites) {
+      const dest = user ? '/dashboard/actualites' : '/login';
+      return (
+        <li key="actualites">
+          <Link
+            to={dest}
+            onClick={() => mobile && setMenuOpen(false)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              background: '#16a34a',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: 13,
+              padding: '7px 16px',
+              borderRadius: 999,
+              textDecoration: 'none',
+              letterSpacing: 0.3,
+              animation: 'navActuPulse 1.4s ease-in-out infinite',
+              boxShadow: '0 0 0 0 rgba(22,163,74,0.7)',
+            }}
+          >
+            <FaNewspaper size={13} />
+            {l.label}
+            <span style={{
+              width: 8, height: 8,
+              borderRadius: '50%',
+              background: '#fff',
+              animation: 'navActuDot 1.4s ease-in-out infinite',
+              flexShrink: 0,
+            }} />
+          </Link>
+        </li>
+      );
+    }
     return (
       <li key={l.to}>
         <Link to={l.to} className={isActive(l.to, l.exact) ? 'active' : ''}
@@ -90,6 +127,18 @@ function Navbar() {
             if (l.isDons) return (
               <a key="dons" href="#dons" onClick={handleDons}>{l.label}</a>
             );
+            if (l.isActualites) {
+              const dest = user ? '/dashboard/actualites' : '/login';
+              return (
+                <Link key="actualites" to={dest}
+                  onClick={() => setMenuOpen(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#16a34a', color: '#fff', fontWeight: 700, borderRadius: 8, padding: '10px 16px', textDecoration: 'none', animation: 'navActuPulse 1.4s ease-in-out infinite' }}>
+                  <FaNewspaper size={14} />
+                  {l.label}
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'navActuDot 1.4s ease-in-out infinite' }} />
+                </Link>
+              );
+            }
             return (
               <Link key={l.to} to={l.to} className={isActive(l.to, l.exact) ? 'active' : ''}
                 onClick={() => setMenuOpen(false)}>

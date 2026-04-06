@@ -5,7 +5,7 @@ import {
   FaExclamationCircle, FaSearch, FaEnvelope, FaBell, FaCog,
   FaSignOutAlt, FaUserCircle, FaBars, FaTimes, FaMapMarkerAlt,
   FaUserShield, FaUsersCog, FaClipboardList, FaLock, FaExclamationTriangle,
-  FaFileInvoiceDollar, FaNewspaper,
+  FaFileInvoiceDollar, FaNewspaper, FaHandHoldingUsd, FaShieldAlt, FaSlidersH,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { getUnreadCount } from '../services/notifications';
@@ -83,8 +83,11 @@ function DashboardLayout() {
     suivi:                  ['SUPER_ADMIN', 'ADMIN_FINANCIER', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR', 'MODERATEUR'],
     statistiques:           ['SUPER_ADMIN', 'ADMIN_FINANCIER', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR', 'MODERATEUR'],
     declarations:           ['SUPER_ADMIN', 'ADMIN_VALIDATEUR'],
+    'aides-financieres':    ['SUPER_ADMIN', 'ADMIN_FINANCIER'],
     'gestion-utilisateurs': ['SUPER_ADMIN', 'ADMIN_SUPPORT', 'ADMIN_VALIDATEUR'],
     administrateurs:        ['SUPER_ADMIN'],
+    'parametres-systeme':   ['SUPER_ADMIN'],
+    'audit-logs':           ['SUPER_ADMIN'],
   }), []);
 
   const computedMenuItems = useMemo(() => {
@@ -105,11 +108,16 @@ function DashboardLayout() {
     if (hasRole(ADMIN_ROLES_FOR['declarations'])) {
       adminLinks.push({ path: 'declarations', label: 'Déclarations', Icon: FaClipboardList });
     }
+    if (hasRole(['SUPER_ADMIN', 'ADMIN_FINANCIER'])) {
+      adminLinks.push({ path: 'aides-financieres', label: 'Aides financières', Icon: FaHandHoldingUsd });
+    }
     if (hasRole(ADMIN_ROLES_FOR['gestion-utilisateurs'])) {
       adminLinks.push({ path: 'gestion-utilisateurs', label: 'Gestion utilisateurs', Icon: FaUsersCog });
     }
     if (isSuperAdmin) {
       adminLinks.push({ path: 'administrateurs', label: 'Gestion administrateurs', Icon: FaUserShield });
+      adminLinks.push({ path: 'parametres-systeme', label: 'Paramètres système', Icon: FaSlidersH });
+      adminLinks.push({ path: 'audit-logs', label: 'Audit Logs', Icon: FaShieldAlt });
     }
 
     const insertIndex = allowedBase.findIndex((item) => item.path === 'signaler');

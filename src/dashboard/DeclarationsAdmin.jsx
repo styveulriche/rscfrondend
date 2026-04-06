@@ -1,9 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   FaFileAlt, FaSyncAlt, FaSearch, FaCheckCircle, FaTimesCircle,
-  FaCalendarAlt, FaMapMarkerAlt, FaChartBar,
+  FaTrash, FaNewspaper, FaEye, FaFilePdf,
+  FaGlobe, FaEyeSlash, FaPaperPlane, FaQuestionCircle,
 } from 'react-icons/fa';
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { StatsRow } from './Statistics';
+import { useAuth } from '../context/AuthContext';
 import {
   listDeclarations,
   declarationsSearch,
@@ -11,8 +15,21 @@ import {
   validateDeclaration,
   rejectDeclaration,
   deleteDeclaration,
-  declarationsByStatus,
 } from '../services/declarations';
+import {
+  addDocument,
+  deleteDocument,
+  soumettre,
+  demanderComplements,
+} from '../services/declarationDocuments';
+import {
+  createAvis,
+  updateAvis,
+  getAvisPdf,
+  publierAvis,
+  depublierAvis,
+  deleteAvis,
+} from '../services/avisDecès';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 
@@ -72,12 +89,32 @@ export default function DeclarationsAdmin() {
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  /* ── Stats ─────────────────────────── */
-  const today = new Date().toISOString().split('T')[0];
-  const firstOfYear = `${new Date().getFullYear()}-01-01`;
+  /* ── Documents panel ─────────────────── */
+  const [documents, setDocuments] = useState([]);
+  const [docsLoading] = useState(false);
+  const [docStatus, setDocStatus] = useState(null);
+  const [docForm, setDocForm] = useState({ type: 'CERTIFICAT_DECES', nomFichier: '', urlDocument: '', description: '' });
+  const [complementMsg, setComplementMsg] = useState('');
 
-  const statsFetcher = useCallback(() =>
-    declarationsStats({ debut: firstOfYear, fin: today }), []);
+  /* ── Avis de décès panel ─────────────── */
+  const [avis, setAvis] = useState(null);
+  const [avisLoading] = useState(false);
+  const [avisStatus, setAvisStatus] = useState(null);
+  const [avisForm, setAvisForm] = useState({
+    nomDefunt: '', prenomDefunt: '', dateNaissance: '', dateDeces: '',
+    lieuDeces: '', pays: '', photoUrl: '', contenuHtml: '', estPublic: false,
+  });
+  const [showAvisForm, setShowAvisForm] = useState(false);
+
+  const { user } = useAuth();
+  const adminId = user?.id;
+
+  /* ── Stats ─────────────────────────── */
+  const statsFetcher = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const firstOfYear = `${new Date().getFullYear()}-01-01`;
+    return declarationsStats({ debut: firstOfYear, fin: today });
+  }, []);
 
   const statsResource = useRealtimeResource('declarations-stats', statsFetcher, {
     enabled: true, immediate: true, interval: REALTIME_INTERVALS.declarations,
@@ -299,6 +336,7 @@ export default function DeclarationsAdmin() {
 
       {/* Detail + actions panel */}
       {selected && (
+        <>
         <div className="content-grid" style={{ display: 'grid', gap: 20, marginTop: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
           {/* Detail */}
           <div className="content-card">
@@ -436,6 +474,300 @@ export default function DeclarationsAdmin() {
             </div>
           </div>
         </div>
+
+        {/* ── Panel Documents ── */}
+        <div className="content-card" style={{ marginTop: 20 }}>
+          <h3 className="content-card-title" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FaFileAlt size={14} color="var(--red-primary)" />
+            Documents de la déclaration
+          </h3>
+
+          {/* Liste documents existants */}
+          {docsLoading && <div style={{ fontSize: 13, color: 'var(--text-gray)' }}>Chargement…</div>}
+          {documents.length === 0 && !docsLoading && (
+            <p style={{ fontSize: 13, color: 'var(--text-gray)', marginBottom: 12 }}>Aucun document attaché.</p>
+          )}
+          {documents.map((doc) => (
+            <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+              <FaFilePdf size={13} color="var(--red-primary)" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{doc.nomFichier || doc.type}</p>
+                {doc.description && <p style={{ margin: 0, fontSize: 11, color: 'var(--text-gray)' }}>{doc.description}</p>}
+              </div>
+              {doc.urlDocument && (
+                <a href={doc.urlDocument} target="_blank" rel="noreferrer"
+                  style={{ fontSize: 12, color: 'var(--red-primary)', textDecoration: 'none' }}>
+                  <FaEye size={13} />
+                </a>
+              )}
+              <button onClick={async () => {
+                if (!window.confirm('Supprimer ce document ?')) return;
+                await deleteDocument(selected.id, doc.id);
+                setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', padding: 4 }}>
+                <FaTrash size={12} />
+              </button>
+            </div>
+          ))}
+
+          {/* Formulaire ajout document */}
+          <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>Ajouter un document</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <p className="settings-label">Type</p>
+                <select className="form-input" value={docForm.type}
+                  onChange={(e) => setDocForm({ ...docForm, type: e.target.value })}>
+                  <option value="CERTIFICAT_DECES">Certificat de décès</option>
+                  <option value="ACTE_DECES">Acte de décès</option>
+                  <option value="PIECE_IDENTITE">Pièce d'identité</option>
+                  <option value="AUTRE">Autre</option>
+                </select>
+              </div>
+              <div>
+                <p className="settings-label">Nom du fichier</p>
+                <input className="form-input" value={docForm.nomFichier}
+                  onChange={(e) => setDocForm({ ...docForm, nomFichier: e.target.value })}
+                  placeholder="cert.pdf" />
+              </div>
+            </div>
+            <div>
+              <p className="settings-label">URL du document</p>
+              <input className="form-input" value={docForm.urlDocument}
+                onChange={(e) => setDocForm({ ...docForm, urlDocument: e.target.value })}
+                placeholder="https://..." />
+            </div>
+            <div>
+              <p className="settings-label">Description</p>
+              <input className="form-input" value={docForm.description}
+                onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
+                placeholder="Description (optionnel)" />
+            </div>
+            {docStatus && (
+              <div style={{ padding: '8px 12px', borderRadius: 8, fontSize: 13,
+                background: docStatus.type === 'success' ? 'rgba(46,125,50,0.15)' : 'rgba(198,40,40,0.15)',
+                color: docStatus.type === 'success' ? '#2e7d32' : '#c62828' }}>
+                {docStatus.message}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn-add" style={{ flex: 1 }}
+                disabled={!docForm.urlDocument || !docForm.nomFichier}
+                onClick={async () => {
+                  try {
+                    setDocStatus(null);
+                    const doc = await addDocument(selected.id, docForm);
+                    setDocuments((prev) => [...prev, doc]);
+                    setDocForm({ type: 'CERTIFICAT_DECES', nomFichier: '', urlDocument: '', description: '' });
+                    setDocStatus({ type: 'success', message: 'Document ajouté.' });
+                  } catch (err) {
+                    setDocStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                  }
+                }}>
+                Ajouter le document
+              </button>
+              <button className="btn-small" title="Demander des compléments"
+                onClick={async () => {
+                  if (!complementMsg.trim()) return;
+                  try {
+                    await demanderComplements(selected.id, complementMsg);
+                    setDocStatus({ type: 'success', message: 'Demande de compléments envoyée.' });
+                    setComplementMsg('');
+                  } catch (err) {
+                    setDocStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                  }
+                }}>
+                <FaQuestionCircle size={12} style={{ marginRight: 4 }} />
+                Compléments
+              </button>
+              <button className="btn-small" title="Soumettre la déclaration"
+                onClick={async () => {
+                  try {
+                    await soumettre(selected.id);
+                    setDocStatus({ type: 'success', message: 'Déclaration soumise.' });
+                  } catch (err) {
+                    setDocStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                  }
+                }}>
+                <FaPaperPlane size={12} style={{ marginRight: 4 }} />
+                Soumettre
+              </button>
+            </div>
+            {/* Champ message compléments */}
+            <input className="form-input" value={complementMsg}
+              onChange={(e) => setComplementMsg(e.target.value)}
+              placeholder="Message pour demander des compléments…" />
+          </div>
+        </div>
+
+        {/* ── Panel Avis de Décès ── */}
+        <div className="content-card" style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <h3 className="content-card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FaNewspaper size={14} color="var(--red-primary)" />
+              Avis de décès
+            </h3>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {avis && (
+                <>
+                  <button className="btn-small" onClick={async () => {
+                    try {
+                      const blob = await getAvisPdf(selected.id);
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url; a.download = `avis-deces-${selected.id}.pdf`; a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      setAvisStatus({ type: 'error', message: 'Impossible de télécharger le PDF.' });
+                    }
+                  }}>
+                    <FaFilePdf size={11} style={{ marginRight: 4 }} />
+                    PDF
+                  </button>
+                  {avis.estPublic ? (
+                    <button className="btn-small" onClick={async () => {
+                      await depublierAvis(selected.id);
+                      setAvis({ ...avis, estPublic: false });
+                      setAvisStatus({ type: 'success', message: 'Avis dépublié.' });
+                    }}>
+                      <FaEyeSlash size={11} style={{ marginRight: 4 }} />
+                      Dépublier
+                    </button>
+                  ) : (
+                    <button className="btn-add" style={{ padding: '7px 14px', fontSize: 12 }}
+                      onClick={async () => {
+                        await publierAvis(selected.id);
+                        setAvis({ ...avis, estPublic: true });
+                        setAvisStatus({ type: 'success', message: 'Avis publié.' });
+                      }}>
+                      <FaGlobe size={11} style={{ marginRight: 4 }} />
+                      Publier
+                    </button>
+                  )}
+                  <button className="btn-small" onClick={async () => {
+                    if (!window.confirm('Supprimer cet avis de décès ?')) return;
+                    await deleteAvis(selected.id);
+                    setAvis(null);
+                    setShowAvisForm(false);
+                    setAvisStatus({ type: 'success', message: 'Avis supprimé.' });
+                  }}>
+                    <FaTrash size={11} />
+                  </button>
+                </>
+              )}
+              <button className="btn-small" onClick={() => setShowAvisForm((v) => !v)}>
+                {showAvisForm ? 'Fermer' : avis ? 'Modifier' : 'Créer un avis'}
+              </button>
+            </div>
+          </div>
+
+          {avisLoading && <div style={{ fontSize: 13, color: 'var(--text-gray)' }}>Chargement…</div>}
+
+          {avis && !showAvisForm && (
+            <div style={{ fontSize: 13, display: 'grid', gap: 8 }}>
+              <p style={{ margin: 0 }}>
+                <strong>{avis.prenomDefunt} {avis.nomDefunt}</strong>
+                {' · '}né(e) {formatDate(avis.dateNaissance)}
+                {' · '}décédé(e) {formatDate(avis.dateDeces)}
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-gray)' }}>{avis.lieuDeces}, {avis.pays}</p>
+              {avis.estPublic && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#2e7d32', fontWeight: 700 }}>
+                  <FaGlobe size={10} /> Publié
+                </span>
+              )}
+              {avis.contenuHtml && (
+                <div style={{ marginTop: 8, padding: '12px', background: '#f9f9f9', borderRadius: 8, fontSize: 13 }}
+                  dangerouslySetInnerHTML={{ __html: avis.contenuHtml }} />
+              )}
+            </div>
+          )}
+
+          {avisStatus && (
+            <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 13,
+              background: avisStatus.type === 'success' ? 'rgba(46,125,50,0.15)' : 'rgba(198,40,40,0.15)',
+              color: avisStatus.type === 'success' ? '#2e7d32' : '#c62828' }}>
+              {avisStatus.message}
+            </div>
+          )}
+
+          {showAvisForm && (
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <p className="settings-label">Prénom du défunt</p>
+                  <input className="form-input" value={avisForm.prenomDefunt}
+                    onChange={(e) => setAvisForm({ ...avisForm, prenomDefunt: e.target.value })} />
+                </div>
+                <div>
+                  <p className="settings-label">Nom du défunt</p>
+                  <input className="form-input" value={avisForm.nomDefunt}
+                    onChange={(e) => setAvisForm({ ...avisForm, nomDefunt: e.target.value })} />
+                </div>
+                <div>
+                  <p className="settings-label">Date de naissance</p>
+                  <input className="form-input" type="date" value={avisForm.dateNaissance}
+                    onChange={(e) => setAvisForm({ ...avisForm, dateNaissance: e.target.value })} />
+                </div>
+                <div>
+                  <p className="settings-label">Date de décès</p>
+                  <input className="form-input" type="date" value={avisForm.dateDeces}
+                    onChange={(e) => setAvisForm({ ...avisForm, dateDeces: e.target.value })} />
+                </div>
+                <div>
+                  <p className="settings-label">Lieu de décès</p>
+                  <input className="form-input" value={avisForm.lieuDeces}
+                    onChange={(e) => setAvisForm({ ...avisForm, lieuDeces: e.target.value })} />
+                </div>
+                <div>
+                  <p className="settings-label">Pays</p>
+                  <input className="form-input" value={avisForm.pays}
+                    onChange={(e) => setAvisForm({ ...avisForm, pays: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <p className="settings-label">URL photo du défunt</p>
+                <input className="form-input" value={avisForm.photoUrl}
+                  onChange={(e) => setAvisForm({ ...avisForm, photoUrl: e.target.value })}
+                  placeholder="https://..." />
+              </div>
+              <div>
+                <p className="settings-label">Contenu (éditeur riche)</p>
+                <CKEditor
+                  editor={ClassicEditor}
+                  data={avisForm.contenuHtml}
+                  onChange={(event, editor) => setAvisForm({ ...avisForm, contenuHtml: editor.getData() })}
+                  config={{ toolbar: ['bold', 'italic', 'underline', '|', 'bulletedList', 'numberedList', '|', 'undo', 'redo'] }}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={avisForm.estPublic}
+                  onChange={(e) => setAvisForm({ ...avisForm, estPublic: e.target.checked })} />
+                Publier immédiatement
+              </label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-add" style={{ flex: 1 }}
+                  onClick={async () => {
+                    setAvisStatus(null);
+                    try {
+                      const saved = avis
+                        ? await updateAvis(selected.id, adminId, avisForm)
+                        : await createAvis(selected.id, adminId, avisForm);
+                      setAvis(saved);
+                      setShowAvisForm(false);
+                      setAvisStatus({ type: 'success', message: avis ? 'Avis mis à jour.' : 'Avis créé.' });
+                    } catch (err) {
+                      setAvisStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                    }
+                  }}>
+                  {avis ? 'Mettre à jour' : 'Créer l\'avis'}
+                </button>
+                <button className="btn-small" onClick={() => setShowAvisForm(false)}>Annuler</button>
+              </div>
+            </div>
+          )}
+        </div>
+        </>
       )}
     </div>
   );

@@ -85,6 +85,11 @@ export async function searchUsers(params) {
 	return r.data;
 }
 
+export async function getLienParrainage(id) {
+	const r = await api.get(`/utilisateurs/${id}/lien-parrainage`);
+	return r.data;
+}
+
 export async function usersStats() {
 	const r = await api.get('/utilisateurs/stats');
 	return r.data;

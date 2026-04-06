@@ -55,3 +55,8 @@ export async function cotisationsStats() {
   const r = await api.get('/cotisations/admin/stats');
   return r.data;
 }
+
+export async function getAbonnementAnnuel() {
+  const r = await api.get('/cotisations/abonnement-annuel');
+  return r.data;
+}

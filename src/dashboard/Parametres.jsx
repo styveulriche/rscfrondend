@@ -4,9 +4,10 @@ import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaShieldAlt, Fa
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import { updateUser as updateUserService } from '../services/users';
+import { getStatutsDiaspora } from '../services/public';
 import api from '../services/api';
 
-const STATUT_DIASPORA_OPTIONS = [
+const STATUT_DIASPORA_FALLBACK = [
   { value: 'RESIDENT_PERMANENT', label: 'Résident' },
   { value: 'CITOYEN_CANADIEN', label: 'Citoyen canadien' },
   { value: 'ETUDIANT_INTERNATIONAL', label: 'Étudiant international' },
@@ -45,6 +46,21 @@ function Parametres() {
   const [passwordStatus, setPasswordStatus] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [statutOptions, setStatutOptions] = useState(STATUT_DIASPORA_FALLBACK);
+
+  useEffect(() => {
+    getStatutsDiaspora()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) {
+          setStatutOptions(list.map((s) => ({
+            value: s.value ?? s.code ?? s,
+            label: s.label ?? s.libelle ?? s.description ?? s.nom ?? s.code ?? String(s),
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Seed form from auth context when user loads
   useEffect(() => {
@@ -287,7 +303,7 @@ function Parametres() {
                   onChange={(e) => setProfile({ ...profile, statutDiaspora: e.target.value })}
                 >
                   <option value="">Sélectionner votre statut</option>
-                  {STATUT_DIASPORA_OPTIONS.map((s) => (
+                  {statutOptions.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>

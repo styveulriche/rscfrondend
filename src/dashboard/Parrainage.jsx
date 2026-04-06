@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { FaUserFriends, FaUserPlus, FaCalendarAlt, FaIdCard, FaUser, FaTag, FaLink } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
@@ -10,20 +10,23 @@ import {
   cancelParrainage,
   acceptParrainage,
 } from '../services/parrainages';
+import { getLienParrainage } from '../services/users';
+import { getTypesParrainage } from '../services/public';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 
 const MAX = 5;
-const CATEGORIES = [
+const CATEGORIES_FALLBACK = [
   { value: '',               label: '-- Catégorie (optionnel) --' },
   { value: 'MINEUR',         label: 'Mineur' },
   { value: 'MALADE_INFIRME', label: 'Personne malade ou infirme' },
 ];
 
-const categoryLabel = (val) => {
+const categoryLabel = (val, categories) => {
   if (!val) return '';
   const normalized = String(val).toUpperCase();
-  return CATEGORIES.find((c) => c.value === normalized)?.label || '';
+  const list = categories || CATEGORIES_FALLBACK;
+  return list.find((c) => c.value === normalized)?.label || '';
 };
 
 const EMPTY_FORM = { name: '', dateNaissance: '', idFile: null, categorie: '' };
@@ -101,13 +104,36 @@ const buildPayload = (form) => {
 
 function Parrainage() {
   const { user } = useAuth();
-  const parrainageLink = user?.codeParrainage
-    ? `${window.location.origin}/inscription?parrain=${user.codeParrainage}`
-    : null;
+  const [parrainageLink, setParrainageLink] = useState(null);
+  const [categories, setCategories] = useState(CATEGORIES_FALLBACK);
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [rowLoadingKey, setRowLoadingKey] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getLienParrainage(user.id)
+      .then((data) => setParrainageLink(data?.lienParrainage || null))
+      .catch(() => {});
+  }, [user?.id]);
+
+  useEffect(() => {
+    getTypesParrainage()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) {
+          setCategories([
+            { value: '', label: '-- Catégorie (optionnel) --' },
+            ...list.map((t) => ({
+              value: t.value ?? t.code ?? String(t),
+              label: t.label ?? t.libelle ?? t.description ?? t.nom ?? t.code ?? String(t),
+            })),
+          ]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetcher = useCallback(() => {
     if (!user?.id) return Promise.resolve([]);
@@ -285,7 +311,7 @@ function Parrainage() {
                 {f.categorie && (
                   <span className="fiolle-badge">
                     <FaTag size={8} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                    {categoryLabel(f.categorie)}
+                    {categoryLabel(f.categorie, categories)}
                   </span>
                 )}
                 {f.idFileName && (
@@ -334,7 +360,7 @@ function Parrainage() {
                 value={form.categorie}
                 onChange={(e) => setForm({ ...form, categorie: e.target.value })}
               >
-                {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               <label style={{
                 display: 'flex', alignItems: 'center', gap: 10,

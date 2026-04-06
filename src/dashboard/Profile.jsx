@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaClock } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
-import { updateUser as updateUserService } from '../services/users';
+import { updateUser as updateUserService, getLienParrainage } from '../services/users';
+import { getStatutsDiaspora } from '../services/public';
 import { StatsRow } from './Statistics';
 
-const STATUT_DIASPORA_OPTIONS = [
+const STATUT_DIASPORA_FALLBACK = [
   { value: 'RESIDENT_PERMANENT', label: 'Résident' },
   { value: 'CITOYEN_CANADIEN', label: 'Citoyen canadien' },
   { value: 'ETUDIANT_INTERNATIONAL', label: 'Étudiant international' },
@@ -46,17 +47,36 @@ const EligibilityBadge = ({ value }) => {
 function Profile() {
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
-    nom: '',
-    prenom: '',
-    email: '',
-    telephone: '',
-    paysOrigine: '',
-    statutDiaspora: '',
-    dateNaissance: '',
-    sexe: '',
+    nom: '', prenom: '', email: '', telephone: '',
+    paysOrigine: '', statutDiaspora: '', dateNaissance: '', sexe: '',
   });
   const [status, setStatus] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [statutOptions, setStatutOptions] = useState(STATUT_DIASPORA_FALLBACK);
+  const [parrainageLink, setParrainageLink] = useState(null);
+
+  useEffect(() => {
+    getStatutsDiaspora()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) {
+          setStatutOptions(list.map((s) => ({
+            value: s.value ?? s.code ?? String(s),
+            label: s.label ?? s.libelle ?? s.description ?? s.nom ?? s.code ?? String(s),
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getLienParrainage(user.id)
+      .then((data) => {
+        setParrainageLink(data?.lienParrainage || null);
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     if (user) {
@@ -129,16 +149,16 @@ function Profile() {
                   Code parrainage : <strong>{user.codeParrainage}</strong>
                 </span>
               )}
-              {user?.codeParrainage && (
+              {parrainageLink && (
                 <span style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(139,28,28,0.08)', border: '1px solid rgba(139,28,28,0.2)', padding: '4px 10px', borderRadius: 999, flexWrap: 'wrap' }}>
                   Lien de parrainage :&nbsp;
                   <a
-                    href={`${window.location.origin}/inscription?parrain=${user.codeParrainage}`}
+                    href={parrainageLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: 'var(--red-primary)', fontWeight: 600, wordBreak: 'break-all' }}
                   >
-                    {`${window.location.origin}/inscription?parrain=${user.codeParrainage}`}
+                    {parrainageLink}
                   </a>
                 </span>
               )}
@@ -276,7 +296,7 @@ function Profile() {
                   onChange={(e) => setForm({ ...form, statutDiaspora: e.target.value })}
                 >
                   <option value="">Sélectionner votre statut</option>
-                  {STATUT_DIASPORA_OPTIONS.map((s) => (
+                  {statutOptions.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>

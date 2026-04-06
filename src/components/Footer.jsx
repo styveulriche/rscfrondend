@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaFacebook, FaInstagram, FaTwitter, FaWhatsapp, FaLinkedin } from 'react-icons/fa';
 import { useLanguage } from '../context/LanguageContext';
 import translations from '../i18n/translations';
+import { getSocialLinks } from '../services/public';
 
 const PARTENAIRES = [
   { name: 'Partenaire 1', logo: null },
@@ -9,7 +11,14 @@ const PARTENAIRES = [
   { name: 'Partenaire 3', logo: null },
 ];
 
-const SOCIAL_LINKS = [
+const PLATFORM_META = {
+  facebook:  { icon: FaFacebook,  color: '#1877F2', label: 'Facebook'  },
+  instagram: { icon: FaInstagram, color: '#E1306C', label: 'Instagram' },
+  twitter:   { icon: FaTwitter,   color: '#1DA1F2', label: 'Twitter'   },
+  linkedin:  { icon: FaLinkedin,  color: '#0A66C2', label: 'LinkedIn'  },
+};
+
+const SOCIAL_LINKS_FALLBACK = [
   { icon: FaFacebook,  href: 'https://facebook.com/retauxsources',  label: 'Facebook',  color: '#1877F2' },
   { icon: FaInstagram, href: 'https://instagram.com/retauxsources', label: 'Instagram', color: '#E1306C' },
   { icon: FaTwitter,   href: 'https://twitter.com/retauxsources',   label: 'Twitter',   color: '#1DA1F2' },
@@ -21,6 +30,31 @@ const WHATSAPP_NUMBER = '+18338070595';
 function Footer() {
   const { lang } = useLanguage();
   const T = translations[lang].footer;
+  const [socialLinks, setSocialLinks] = useState(SOCIAL_LINKS_FALLBACK);
+
+  useEffect(() => {
+    getSocialLinks()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) {
+          const mapped = list
+            .filter((s) => s.actif !== false && s.active !== false)
+            .map((s) => {
+              const platform = (s.platform || s.reseau || s.type || '').toLowerCase();
+              const meta = PLATFORM_META[platform] || {};
+              return {
+                icon: meta.icon || FaGlobe,
+                href: s.url || s.lien || s.href || '#',
+                label: s.label || meta.label || platform,
+                color: s.color || meta.color || '#888',
+              };
+            })
+            .filter((s) => s.icon);
+          if (mapped.length > 0) setSocialLinks(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <footer className="footer" id="contact">
@@ -30,7 +64,7 @@ function Footer() {
           <p>{T.desc}</p>
           {/* Réseaux sociaux */}
           <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-            {SOCIAL_LINKS.map(({ icon: Icon, href, label, color }) => (
+            {socialLinks.map(({ icon: Icon, href, label, color }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" title={label}
                 style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s', textDecoration: 'none' }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = color; }}

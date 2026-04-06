@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDonationFlow } from '../hooks/useDonationFlow';
 import { useFinancesBoard } from '../hooks/useFinancesBoard';
 import { listAllDons, donsStats, listMesDons, mesDonsTotal } from '../services/dons';
+import { getPublicConfig } from '../services/public';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -210,9 +211,8 @@ function AdminDonationView() {
 
 /* ─── modal confirmation portefeuille ────────────────────────── */
 
-const SERVICE_FEE_RATE = 0.02; // 2% frais de service
-
-function WalletDonationModal({ amount, message, campagne, balance, onConfirm, onClose }) {
+function WalletDonationModal({ amount, message, campagne, balance, feeRate, onConfirm, onClose }) {
+  const SERVICE_FEE_RATE = feeRate ?? 0.02;
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [done, setDone] = useState(false);
@@ -318,6 +318,16 @@ function UserDonationView() {
   const [message, setMessage] = useState('');
   const [campagne, setCampagne] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [feeRate, setFeeRate] = useState(0.02);
+
+  useEffect(() => {
+    getPublicConfig()
+      .then((cfg) => {
+        const rate = cfg?.serviceFeeRate ?? cfg?.fraisService ?? cfg?.feeRate;
+        if (typeof rate === 'number' && rate >= 0) setFeeRate(rate);
+      })
+      .catch(() => {});
+  }, []);
 
   // Historique des dons
   const [dons, setDons] = useState([]);
@@ -376,6 +386,7 @@ function UserDonationView() {
           message={message}
           campagne={campagne}
           balance={balance}
+          feeRate={feeRate}
           onConfirm={async () => {
             await submitDonation({ amount, message, campagne, balance: Number(balance) || 0 });
             addToBalance(-amount);

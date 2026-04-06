@@ -30,7 +30,12 @@ import AdminUsers from './dashboard/AdminUsers';
 import DeclarationsAdmin from './dashboard/DeclarationsAdmin';
 import Cotisations from './dashboard/Cotisations';
 import Actualites from './dashboard/Actualites';
+import AidesFinancieres from './dashboard/AidesFinancieres';
+import AuditLogs from './dashboard/AuditLogs';
+import ParametresSysteme from './dashboard/ParametresSysteme';
 import ActualitesPublic from './pages/ActualitesPublic';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import './App.css';
 
 function App() {
@@ -48,7 +53,9 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/inscription"  element={<Register />} />
           <Route path="/validation"   element={<Validation />} />
-          <Route path="/actualites"   element={<ActualitesPublic />} />
+          <Route path="/actualites"          element={<ActualitesPublic />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+          <Route path="/reinitialiser-mdp"   element={<ResetPassword />} />
           <Route path="/dashboard"    element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
             <Route index element={<Navigate to="statistiques" replace />} />
             <Route path="statistiques" element={<Statistics />} />
@@ -70,6 +77,30 @@ function App() {
               element={(
                 <AdminRoute allowedRoles={['SUPER_ADMIN', 'ADMIN_VALIDATEUR']}>
                   <DeclarationsAdmin />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="aides-financieres"
+              element={(
+                <AdminRoute allowedRoles={['SUPER_ADMIN', 'ADMIN_FINANCIER']}>
+                  <AidesFinancieres />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="audit-logs"
+              element={(
+                <AdminRoute allowedRoles={['SUPER_ADMIN']}>
+                  <AuditLogs />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="parametres-systeme"
+              element={(
+                <AdminRoute allowedRoles={['SUPER_ADMIN']}>
+                  <ParametresSysteme />
                 </AdminRoute>
               )}
             />

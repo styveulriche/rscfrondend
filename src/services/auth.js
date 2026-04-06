@@ -49,3 +49,13 @@ export async function resendVerificationEmail({ email }) {
   const res = await api.post('/auth/resend-verification-email', null, { params: { email } });
   return res.data;
 }
+
+export async function forgotPassword(email) {
+  const res = await api.post('/auth/forgot-password', null, { params: { email }, skipAuth: true });
+  return res.data;
+}
+
+export async function resetPassword({ token, newPassword }) {
+  const res = await api.post('/auth/reset-password', null, { params: { token, newPassword }, skipAuth: true });
+  return res.data;
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FaWallet, FaHandHoldingHeart, FaChartLine, FaClock,
-  FaMoneyBillWave, FaChartBar, FaUsers, FaSync,
+  FaMoneyBillWave, FaChartBar, FaUsers, FaSync, FaCalendarAlt,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
@@ -9,8 +9,7 @@ import { REALTIME_INTERVALS } from '../config/realtime';
 import { paymentsStats } from '../services/paiements';
 import { donsStats, listAllDons } from '../services/dons';
 import { countUsersTotal } from '../services/users';
-import { allCotisations } from '../services/cotisations';
-import { listDossiers } from '../services/dossiers';
+import { allCotisations, getAbonnementAnnuel } from '../services/cotisations';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -441,6 +440,13 @@ function Statistics() {
   const { user, isAdmin } = useAuth();
   const probationInfo = useMemo(() => computeProbationInfo(user), [user]);
   const [time, setTime] = useState(() => getTimeLeft(probationInfo?.end));
+  const [abonnement, setAbonnement] = useState(null);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      getAbonnementAnnuel().then(setAbonnement).catch(() => {});
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     setTime(getTimeLeft(probationInfo?.end));
@@ -467,25 +473,73 @@ function Statistics() {
           <AdminStatsDashboard />
         </div>
       ) : (
-        <div className="probation-card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
-            <FaClock size={16} color="rgba(255,255,255,0.8)" />
-            <p className="probation-label" style={{ margin: 0 }}>Durée restante de votre période probatoire</p>
+        <>
+          <div className="probation-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+              <FaClock size={16} color="rgba(255,255,255,0.8)" />
+              <p className="probation-label" style={{ margin: 0 }}>Durée restante de votre période probatoire</p>
+            </div>
+            <p className="probation-note">
+              Statut : <strong>{probationInfo?.label || '—'}</strong> · Durée : <strong>{durationText}</strong>
+              {endLabel ? ` · Fin estimée le ${endLabel}` : ''}
+            </p>
+            {countdownActive ? (
+              <p className="probation-timer">
+                {time.months}mois {time.days}jours {pad(time.hours)}h {pad(time.minutes)}min {pad(time.seconds)}sec
+              </p>
+            ) : (
+              <p className="probation-timer">
+                {probationInfo ? 'Votre période probatoire est terminée.' : 'Information indisponible.'}
+              </p>
+            )}
           </div>
-          <p className="probation-note">
-            Statut : <strong>{probationInfo?.label || '—'}</strong> · Durée : <strong>{durationText}</strong>
-            {endLabel ? ` · Fin estimée le ${endLabel}` : ''}
-          </p>
-          {countdownActive ? (
-            <p className="probation-timer">
-              {time.months}mois {time.days}jours {pad(time.hours)}h {pad(time.minutes)}min {pad(time.seconds)}sec
-            </p>
-          ) : (
-            <p className="probation-timer">
-              {probationInfo ? 'Votre période probatoire est terminée.' : 'Information indisponible.'}
-            </p>
+
+          {abonnement && (
+            <div style={{
+              marginTop: 16,
+              background: abonnement.actif ? 'linear-gradient(135deg,#1565c0,#1976d2)' : 'linear-gradient(135deg,#37474f,#546e7a)',
+              borderRadius: 14, padding: '18px 22px', color: 'white',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <FaCalendarAlt size={16} color="rgba(255,255,255,0.8)" />
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Abonnement annuel RSC</p>
+                <span style={{ marginLeft: 'auto', background: abonnement.actif ? 'rgba(46,213,115,0.25)' : 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '2px 12px', fontSize: 11, fontWeight: 700 }}>
+                  {abonnement.actif ? '✓ ACTIF' : '✗ INACTIF'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: abonnement.joursRestants != null && abonnement.actif ? 14 : 0 }}>
+                <div>
+                  <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Paiement</p>
+                  <strong>{abonnement.datePaiement ? new Date(abonnement.datePaiement).toLocaleDateString('fr-CA') : '—'}</strong>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Expiration</p>
+                  <strong>{abonnement.dateExpiration ? new Date(abonnement.dateExpiration).toLocaleDateString('fr-CA') : '—'}</strong>
+                </div>
+              </div>
+              {abonnement.joursRestants != null && abonnement.actif && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, opacity: 0.85 }}>Jours restants</span>
+                    <span style={{ fontSize: 13, fontWeight: 800 }}>{abonnement.joursRestants} j</span>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 999, height: 8, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${Math.max(0, Math.min(100, Math.round((abonnement.joursRestants / 365) * 100)))}%`,
+                      height: '100%', borderRadius: 999, transition: 'width 0.5s',
+                      background: abonnement.joursRestants > 60 ? '#4caf50' : abonnement.joursRestants > 20 ? '#ff9800' : '#f44336',
+                    }} />
+                  </div>
+                </div>
+              )}
+              {!abonnement.actif && (
+                <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
+                  Votre abonnement a expiré. Rendez-vous dans <strong>Cotisations</strong> pour le renouveler.
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

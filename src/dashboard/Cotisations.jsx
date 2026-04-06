@@ -2,13 +2,16 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FaFileInvoiceDollar, FaCheckCircle, FaTimes,
   FaSearch, FaMoneyBillWave, FaChartBar, FaUsers, FaWallet,
+  FaCalendarAlt, FaClock,
 } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import {
   mesCotisations, mesCotisationsTotal,
   payerCotisation, allCotisations, cotisationsStats,
+  getAbonnementAnnuel,
 } from '../services/cotisations';
+import { getTypesCotisation } from '../services/public';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -43,7 +46,7 @@ const extractNum = (obj, ...keys) => {
   return first ?? 0;
 };
 
-const TYPES = [
+const TYPES_FALLBACK = [
   { value: 'COTISATION_MENSUELLE', label: 'Cotisation mensuelle' },
   { value: 'COTISATION_ANNUELLE',  label: 'Cotisation annuelle' },
   { value: 'FRAIS_ENTRETIEN',      label: 'Frais d\'entretien' },
@@ -56,6 +59,70 @@ const STATUTS = [
   { value: 'ECHOUE',     label: 'Échouée' },
   { value: 'ANNULE',     label: 'Annulée' },
 ];
+
+/* ─── carte abonnement annuel ─────────────────────────────────── */
+
+function AbonnementCard({ abonnement }) {
+  if (!abonnement) return null;
+  const actif = abonnement.actif === true;
+  const joursRestants = abonnement.joursRestants ?? null;
+  const totalJours = 365;
+  const pct = joursRestants !== null ? Math.max(0, Math.min(100, Math.round((joursRestants / totalJours) * 100))) : null;
+  const barColor = joursRestants > 60 ? '#2e7d32' : joursRestants > 20 ? '#f57c00' : '#c62828';
+  const formatD = (v) => { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-CA'); };
+
+  return (
+    <div style={{
+      background: actif ? 'linear-gradient(135deg,#1565c0,#1976d2)' : 'linear-gradient(135deg,#37474f,#546e7a)',
+      borderRadius: 14, padding: '18px 22px', color: 'white', marginBottom: 20,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <FaCalendarAlt size={18} color="rgba(255,255,255,0.8)" />
+        <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>Abonnement annuel RSC</p>
+        <span style={{ marginLeft: 'auto', background: actif ? 'rgba(46,213,115,0.25)' : 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '2px 12px', fontSize: 11, fontWeight: 700 }}>
+          {actif ? '✓ ACTIF' : '✗ INACTIF'}
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: 14 }}>
+        <div>
+          <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date de paiement</p>
+          <strong>{formatD(abonnement.datePaiement)}</strong>
+        </div>
+        <div>
+          <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date d'expiration</p>
+          <strong>{formatD(abonnement.dateExpiration)}</strong>
+        </div>
+        {abonnement.periodeCoverte && (
+          <div style={{ gridColumn: 'span 2' }}>
+            <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Période couverte</p>
+            <strong>{abonnement.periodeCoverte}</strong>
+          </div>
+        )}
+      </div>
+
+      {joursRestants !== null && actif && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ fontSize: 12, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <FaClock size={11} /> Jours restants
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 800 }}>{joursRestants} j</span>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 999, height: 8, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 999, transition: 'width 0.5s' }} />
+          </div>
+        </div>
+      )}
+
+      {!actif && (
+        <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
+          Votre abonnement annuel a expiré. Effectuez une cotisation annuelle pour le renouveler.
+        </p>
+      )}
+    </div>
+  );
+}
 
 /* ─── badge statut/type ───────────────────────────────────────── */
 
@@ -113,7 +180,7 @@ function CotisationModal({ form, balance, onConfirm, onClose }) {
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [done, setDone] = useState(false);
-  const typeLabel = TYPES.find((t) => t.value === form.type)?.label || form.type;
+  const typeLabel = TYPES_FALLBACK.find((t) => t.value === form.type)?.label || form.type;
 
   const handleConfirm = async () => {
     setProcessing(true);
@@ -281,7 +348,7 @@ function AdminCotisationsView() {
           </select>
           <select className="form-input" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }} style={{ flex: '0 0 200px' }}>
             <option value="">Tous les types</option>
-            {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {TYPES_FALLBACK.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
           {(search || statutFilter || typeFilter) && (
             <button onClick={() => { setSearch(''); setStatutFilter(''); setTypeFilter(''); setPage(0); }} style={{ background: 'none', border: '1px solid #ddd', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
@@ -317,6 +384,23 @@ const DEFAULT_FORM = { type: 'COTISATION_MENSUELLE', montant: '', periodeCoverte
 function UserCotisationsView() {
   const { user, balance, refreshBalance, addToBalance } = useAuth();
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [abonnement, setAbonnement] = useState(null);
+  const [types, setTypes] = useState(TYPES_FALLBACK);
+
+  useEffect(() => {
+    getAbonnementAnnuel().then(setAbonnement).catch(() => {});
+    getTypesCotisation()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) {
+          setTypes(list.map((t) => ({
+            value: t.value ?? t.code ?? String(t),
+            label: t.label ?? t.libelle ?? t.description ?? t.nom ?? t.code ?? String(t),
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
   // snapshot capture les valeurs au moment de l'ouverture de la modal — évite
   // que setForm(DEFAULT_FORM) dans handleConfirm démonte la modal prématurément
   const [snapshot, setSnapshot] = useState(null); // null = modal fermée, objet = modal ouverte
@@ -398,6 +482,8 @@ function UserCotisationsView() {
         />
       )}
 
+      <AbonnementCard abonnement={abonnement} />
+
       {total && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           {[
@@ -433,7 +519,7 @@ function UserCotisationsView() {
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dark)', display: 'block', marginBottom: 6 }}>Type de cotisation</label>
             <select className="form-input" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-              {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              {types.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
 

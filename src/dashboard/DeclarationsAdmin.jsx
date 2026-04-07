@@ -1,11 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   FaFileAlt, FaSyncAlt, FaSearch, FaCheckCircle, FaTimesCircle,
   FaTrash, FaNewspaper, FaEye, FaFilePdf,
   FaGlobe, FaEyeSlash, FaPaperPlane, FaQuestionCircle,
 } from 'react-icons/fa';
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -17,12 +15,14 @@ import {
   deleteDeclaration,
 } from '../services/declarations';
 import {
+  listDocuments,
   addDocument,
   deleteDocument,
   soumettre,
   demanderComplements,
 } from '../services/declarationDocuments';
 import {
+  getAvis,
   createAvis,
   updateAvis,
   getAvisPdf,
@@ -91,14 +91,14 @@ export default function DeclarationsAdmin() {
 
   /* ── Documents panel ─────────────────── */
   const [documents, setDocuments] = useState([]);
-  const [docsLoading] = useState(false);
+  const [docsLoading, setDocsLoading] = useState(false);
   const [docStatus, setDocStatus] = useState(null);
   const [docForm, setDocForm] = useState({ type: 'CERTIFICAT_DECES', nomFichier: '', urlDocument: '', description: '' });
   const [complementMsg, setComplementMsg] = useState('');
 
   /* ── Avis de décès panel ─────────────── */
   const [avis, setAvis] = useState(null);
-  const [avisLoading] = useState(false);
+  const [avisLoading, setAvisLoading] = useState(false);
   const [avisStatus, setAvisStatus] = useState(null);
   const [avisForm, setAvisForm] = useState({
     nomDefunt: '', prenomDefunt: '', dateNaissance: '', dateDeces: '',
@@ -108,6 +108,45 @@ export default function DeclarationsAdmin() {
 
   const { user } = useAuth();
   const adminId = user?.id;
+
+  /* ── Auto-load docs + avis when selection changes ── */
+  useEffect(() => {
+    if (!selectedId) {
+      setDocuments([]);
+      setAvis(null);
+      setDocStatus(null);
+      setAvisStatus(null);
+      return;
+    }
+    setDocsLoading(true);
+    listDocuments(selectedId)
+      .then((res) => setDocuments(Array.isArray(res) ? res : res?.content ?? []))
+      .catch(() => {})
+      .finally(() => setDocsLoading(false));
+
+    setAvisLoading(true);
+    getAvis(selectedId)
+      .then((res) => {
+        if (res) {
+          setAvis(res);
+          setAvisForm({
+            nomDefunt: res.nomDefunt || '',
+            prenomDefunt: res.prenomDefunt || '',
+            dateNaissance: res.dateNaissance ? res.dateNaissance.split('T')[0] : '',
+            dateDeces: res.dateDeces ? res.dateDeces.split('T')[0] : '',
+            lieuDeces: res.lieuDeces || '',
+            pays: res.pays || '',
+            photoUrl: res.photoUrl || '',
+            contenuHtml: res.contenuHtml || '',
+            estPublic: res.estPublic ?? false,
+          });
+        } else {
+          setAvis(null);
+        }
+      })
+      .catch(() => setAvis(null))
+      .finally(() => setAvisLoading(false));
+  }, [selectedId]);
 
   /* ── Stats ─────────────────────────── */
   const statsFetcher = useCallback(() => {
@@ -732,12 +771,14 @@ export default function DeclarationsAdmin() {
                   placeholder="https://..." />
               </div>
               <div>
-                <p className="settings-label">Contenu (éditeur riche)</p>
-                <CKEditor
-                  editor={ClassicEditor}
-                  data={avisForm.contenuHtml}
-                  onChange={(event, editor) => setAvisForm({ ...avisForm, contenuHtml: editor.getData() })}
-                  config={{ toolbar: ['bold', 'italic', 'underline', '|', 'bulletedList', 'numberedList', '|', 'undo', 'redo'] }}
+                <p className="settings-label">Contenu HTML de l'avis</p>
+                <textarea
+                  className="form-input"
+                  rows={8}
+                  placeholder="<p>Contenu de l'avis de décès...</p>"
+                  value={avisForm.contenuHtml}
+                  onChange={(e) => setAvisForm({ ...avisForm, contenuHtml: e.target.value })}
+                  style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
                 />
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>

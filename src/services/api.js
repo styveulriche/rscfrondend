@@ -15,6 +15,9 @@ const AUTH_EXCLUDED_PATHS = [
   '/auth/verify-mfa',
   '/auth/verify-email-code',
   '/auth/resend-verification-email',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/validate-token',
 ];
 
 const isPublicRequest = (config) => {

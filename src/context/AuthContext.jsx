@@ -226,7 +226,13 @@ export function AuthProvider({ children }) {
 
     // Seulement le login utilisateur a réussi
     if (userResult.status === 'fulfilled') {
-      return await finalizeAuth(userResult.value, options);
+      const payload = userResult.value;
+      // MFA requis : retourner le payload brut sans finaliser la session
+      // Le composant Login.jsx doit détecter mfaRequired et afficher le modal
+      if (payload?.mfaRequired && !payload?.token && !payload?.accessToken) {
+        return payload; // { mfaRequired: true, email, ... }
+      }
+      return await finalizeAuth(payload, options);
     }
 
     // Les deux ont échoué → lever l'erreur utilisateur (plus explicite)

@@ -1964,3 +1964,166 @@ body {
   /* Contact & Services */
   .contact-grid       { grid-template-columns: 1fr !important; }
 }
+
+/* ===== UTILITAIRES RESPONSIVE ===== */
+
+/* Grille de formulaire 2 colonnes → 1 colonne sur mobile */
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  /* !important nécessaire pour surcharger les styles inline des composants */
+  .form-row-2 { grid-template-columns: 1fr !important; }
+  .form-row-3 { grid-template-columns: 1fr !important; }
+}
+
+/* ===== RESPONSIVE DASHBOARD COMPLET (≤ 768px) ===== */
+@media (max-width: 768px) {
+
+  /* ── En-tête dashboard ── */
+  .dashboard-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .header-right {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .header-balance {
+    font-size: 12px;
+  }
+
+  /* ── Content-card header (titre + bouton) ── */
+  .content-card-title {
+    font-size: 12px;
+    text-align: left;
+  }
+
+  /* ── Tables dashboard ── */
+  .content-card table {
+    font-size: 12px;
+    min-width: 480px;
+  }
+  .content-card table th,
+  .content-card table td {
+    padding: 8px 4px;
+    white-space: nowrap;
+  }
+  /* Wrapper scroll horizontal automatique */
+  .content-card div[style*="overflow"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Filtres en ligne → colonne ── */
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-row .form-input,
+  .filter-row select {
+    width: 100%;
+    flex: none;
+  }
+
+  /* ── Boutons d'action groupés ── */
+  .action-buttons {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ── Dashboard btn-small ── */
+  .btn-small {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  /* ── Modales dashboard (position fixed + padding overlay) ── */
+  /* Les modales utilisent position:fixed + inset:0 + padding:20 → responsive nativement */
+  /* Réduire le padding interne de la modale sur mobile */
+  .dash-modal {
+    padding: 20px 16px !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* ── ActualitesPublic grid ── */
+  .actualites-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Sidebar menu ── */
+  .sidebar-link span {
+    font-size: 13px;
+  }
+
+  /* ── Profile / Settings form grids ── */
+  .settings-grid {
+    gap: 12px;
+  }
+
+  /* ── Messagerie conversation list ── */
+  .conv-list {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  /* ── Parrainage / filleuls ── */
+  .fiolles-grid { grid-template-columns: 1fr; }
+
+  /* ── Cotisations formulaire ── */
+  .cotisation-form {
+    padding: 16px !important;
+  }
+}
+
+/* ===== RESPONSIVE DASHBOARD PETIT MOBILE (≤ 480px) ===== */
+@media (max-width: 480px) {
+
+  /* ── Modales : prendre 95vw ── */
+  .dash-modal {
+    padding: 16px 12px !important;
+  }
+
+  /* ── Tables : encore plus petites ── */
+  .content-card table {
+    font-size: 11px;
+    min-width: 360px;
+  }
+
+  /* ── Boutons auth pleine largeur ── */
+  .btn-auth {
+    font-size: 14px;
+  }
+
+  /* ── AvisPublic ── */
+  .avis-dates-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Stats dashboard ── */
+  .content-card-title {
+    font-size: 11px;
+  }
+
+  /* ── Inputs pleine largeur ── */
+  .form-input {
+    font-size: 13px;
+  }
+
+  /* ── Pagination ── */
+  .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+}

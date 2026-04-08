@@ -507,7 +507,7 @@ function Statistics() {
                   {abonnement.actif ? '✓ ACTIF' : '✗ INACTIF'}
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: abonnement.joursRestants != null && abonnement.actif ? 14 : 0 }}>
+              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: abonnement.joursRestants != null && abonnement.actif ? 14 : 0 }}>
                 <div>
                   <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Paiement</p>
                   <strong>{abonnement.datePaiement ? new Date(abonnement.datePaiement).toLocaleDateString('fr-CA') : '—'}</strong>

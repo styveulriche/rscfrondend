@@ -465,7 +465,7 @@ function Administrateurs() {
               </div>
             )}
             <form onSubmit={handleSaveEdit}>
-              <div className="settings-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <div className="settings-grid form-row-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <label className="settings-label">
                   Nom
                   <input className="form-input" value={editingAdmin.nom}
@@ -538,7 +538,7 @@ function Administrateurs() {
             </div>
           )}
           <form onSubmit={handleCreateAdmin}>
-            <div className="settings-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="settings-grid form-row-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
               <label className="settings-label">
                 Nom
                 <input className="form-input" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />

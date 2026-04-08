@@ -84,7 +84,7 @@ function AbonnementCard({ abonnement }) {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: 14 }}>
+      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: 14 }}>
         <div>
           <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date de paiement</p>
           <strong>{formatD(abonnement.datePaiement)}</strong>
@@ -247,7 +247,7 @@ function CotisationModal({ form, balance, onConfirm, onClose }) {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <button onClick={onClose} style={{ padding: 13, borderRadius: 8, border: '2px solid #dde3ea', background: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
                 Annuler
               </button>
@@ -485,7 +485,7 @@ function UserCotisationsView() {
       <AbonnementCard abonnement={abonnement} />
 
       {total && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           {[
             { label: 'Total cotisé', value: formatAmount(totalMontant), color: '#1565c0' },
             { label: 'Nombre de paiements', value: totalNombre, color: '#2e7d32' },

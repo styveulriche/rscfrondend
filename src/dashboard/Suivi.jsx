@@ -106,7 +106,7 @@ function VilleForm({ dossier, onSave, onCancel }) {
   return (
     <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 14px', marginTop: 10 }}>
       <p style={{ margin: '0 0 10px', fontWeight: 600, fontSize: 13 }}>Villes départ / arrivée</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <input className="form-input" placeholder="Ville de départ" value={depart} onChange={(e) => setDepart(e.target.value)} />
         <input className="form-input" placeholder="Ville d'arrivée" value={arrivee} onChange={(e) => setArrivee(e.target.value)} />
       </div>

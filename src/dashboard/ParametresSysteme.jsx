@@ -257,7 +257,7 @@ export default function ParametresSysteme() {
                   <input className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="Description du paramètre" />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <p className="settings-label">Catégorie</p>
                     <select className="form-input" value={form.categorie} onChange={(e) => setForm({ ...form, categorie: e.target.value })}>
@@ -286,7 +286,7 @@ export default function ParametresSysteme() {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 20 }}>
+              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 20 }}>
                 <button type="button" onClick={() => setShowForm(false)}
                   style={{ padding: 12, borderRadius: 8, border: '2px solid var(--pink-light)', background: 'white', fontWeight: 600, cursor: 'pointer' }}>
                   Annuler

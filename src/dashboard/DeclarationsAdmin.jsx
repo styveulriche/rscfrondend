@@ -384,7 +384,7 @@ export default function DeclarationsAdmin() {
               Détail de la déclaration
             </h3>
             <div style={{ fontSize: 13, display: 'grid', gap: 10 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <p style={{ margin: 0, color: 'var(--text-gray)', fontSize: 11 }}>Pays</p>
                   <strong>{selected.pays || '—'}</strong>
@@ -552,7 +552,7 @@ export default function DeclarationsAdmin() {
           {/* Formulaire ajout document */}
           <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>Ajouter un document</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <p className="settings-label">Type</p>
                 <select className="form-input" value={docForm.type}
@@ -665,9 +665,13 @@ export default function DeclarationsAdmin() {
                   </button>
                   {avis.estPublic ? (
                     <button className="btn-small" onClick={async () => {
-                      await depublierAvis(selected.id);
-                      setAvis({ ...avis, estPublic: false });
-                      setAvisStatus({ type: 'success', message: 'Avis dépublié.' });
+                      try {
+                        const updated = await depublierAvis(selected.id);
+                        setAvis(updated || { ...avis, estPublic: false });
+                        setAvisStatus({ type: 'success', message: 'Avis dépublié.' });
+                      } catch (err) {
+                        setAvisStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                      }
                     }}>
                       <FaEyeSlash size={11} style={{ marginRight: 4 }} />
                       Dépublier
@@ -675,9 +679,13 @@ export default function DeclarationsAdmin() {
                   ) : (
                     <button className="btn-add" style={{ padding: '7px 14px', fontSize: 12 }}
                       onClick={async () => {
-                        await publierAvis(selected.id);
-                        setAvis({ ...avis, estPublic: true });
-                        setAvisStatus({ type: 'success', message: 'Avis publié.' });
+                        try {
+                          const updated = await publierAvis(selected.id);
+                          setAvis(updated || { ...avis, estPublic: true });
+                          setAvisStatus({ type: 'success', message: 'Avis publié.' });
+                        } catch (err) {
+                          setAvisStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                        }
                       }}>
                       <FaGlobe size={11} style={{ marginRight: 4 }} />
                       Publier
@@ -685,10 +693,14 @@ export default function DeclarationsAdmin() {
                   )}
                   <button className="btn-small" onClick={async () => {
                     if (!window.confirm('Supprimer cet avis de décès ?')) return;
-                    await deleteAvis(selected.id);
-                    setAvis(null);
-                    setShowAvisForm(false);
-                    setAvisStatus({ type: 'success', message: 'Avis supprimé.' });
+                    try {
+                      await deleteAvis(selected.id);
+                      setAvis(null);
+                      setShowAvisForm(false);
+                      setAvisStatus({ type: 'success', message: 'Avis supprimé.' });
+                    } catch (err) {
+                      setAvisStatus({ type: 'error', message: err?.response?.data?.message || 'Erreur.' });
+                    }
                   }}>
                     <FaTrash size={11} />
                   </button>
@@ -709,14 +721,38 @@ export default function DeclarationsAdmin() {
                 {' · '}né(e) {formatDate(avis.dateNaissance)}
                 {' · '}décédé(e) {formatDate(avis.dateDeces)}
               </p>
-              <p style={{ margin: 0, color: 'var(--text-gray)' }}>{avis.lieuDeces}, {avis.pays}</p>
-              {avis.estPublic && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#2e7d32', fontWeight: 700 }}>
-                  <FaGlobe size={10} /> Publié
-                </span>
+              <p style={{ margin: 0, color: 'var(--text-gray)' }}>{avis.lieuDeces}{avis.pays ? `, ${avis.pays}` : ''}</p>
+              {avis.creeParNom && (
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-gray)' }}>Créé par : {avis.creeParNom}</p>
+              )}
+              {avis.estPublic ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#2e7d32', fontWeight: 700 }}>
+                    <FaGlobe size={10} /> Publié
+                  </span>
+                  {avis.lienPartage && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                      <a href={avis.lienPartage} target="_blank" rel="noreferrer"
+                        style={{ fontSize: 11, color: 'var(--red-primary)', wordBreak: 'break-all' }}>
+                        {avis.lienPartage}
+                      </a>
+                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)', padding: 2, flexShrink: 0 }}
+                        title="Copier le lien"
+                        onClick={() => {
+                          navigator.clipboard.writeText(avis.lienPartage);
+                          setAvisStatus({ type: 'success', message: 'Lien copié !' });
+                          setTimeout(() => setAvisStatus(null), 2000);
+                        }}>
+                        <FaEye size={11} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: 11, color: 'var(--text-gray)' }}>Non publié — le lien de partage sera disponible après publication.</span>
               )}
               {avis.contenuHtml && (
-                <div style={{ marginTop: 8, padding: '12px', background: '#f9f9f9', borderRadius: 8, fontSize: 13 }}
+                <div style={{ marginTop: 8, padding: '12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 13, border: '1px solid rgba(255,255,255,0.08)' }}
                   dangerouslySetInnerHTML={{ __html: avis.contenuHtml }} />
               )}
             </div>
@@ -732,7 +768,7 @@ export default function DeclarationsAdmin() {
 
           {showAvisForm && (
             <div style={{ display: 'grid', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <p className="settings-label">Prénom du défunt</p>
                   <input className="form-input" value={avisForm.prenomDefunt}

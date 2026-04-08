@@ -290,7 +290,7 @@ function WalletDonationModal({ amount, message, campagne, balance, feeRate, onCo
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <button onClick={onClose} style={{ padding: '13px', borderRadius: 8, border: '2px solid var(--pink-light)', background: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
                 Annuler
               </button>
@@ -400,7 +400,7 @@ function UserDonationView() {
 
       {/* ── résumé dons ── */}
       {donTotal && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           {[
             { label: 'Total donné', value: totalDonne !== null ? formatAmount(totalDonne) : '—', color: '#2e7d32' },
             { label: 'Nombre de dons', value: nombreDons ?? '—', color: '#1565c0' },

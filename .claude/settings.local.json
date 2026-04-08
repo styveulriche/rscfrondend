@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn \"width.*[0-9]{3,}px\\\\|minWidth.*[0-9]{3,}\\\\|maxWidth.*[0-9]{3,}\" /c/RSC-main/src/pages/*.jsx)"
+    ]
+  }
+}

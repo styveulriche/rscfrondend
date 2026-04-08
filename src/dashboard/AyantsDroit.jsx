@@ -90,7 +90,7 @@ const buildPayload = (f) => {
 function FormFields({ data: fd, onChange, onFileChange }) {
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div style={{ position: 'relative' }}>
           <FaUser size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
           <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Prénom *" value={fd.prenom}
@@ -109,7 +109,7 @@ function FormFields({ data: fd, onChange, onFileChange }) {
           pattern={CA_PHONE_PATTERN} title="Numéro canadien requis, ex : +1 514 000 0000"
           onChange={(e) => onChange({ ...fd, telephone: e.target.value })} required />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div>
           <p className="settings-label" style={{ margin: '0 0 4px', fontSize: 11 }}>Date de naissance</p>
           <input className="form-input" type="date" value={fd.dateNaissance || ''}

@@ -40,7 +40,7 @@ function Contact() {
       </section>
 
       {/* Contenu principal */}
-      <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 0, minHeight: '600px' }}>
+      <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 0 }}>
 
         {/* Infos de contact */}
         <div style={{ background: 'linear-gradient(160deg, #2a0606 0%, #5C1010 100%)', padding: '60px 50px' }}>

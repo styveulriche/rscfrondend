@@ -6,9 +6,9 @@ export async function listAuditLogs(params) {
   return r.data;
 }
 
-export async function auditLogsByUser(userId, debut, fin) {
+export async function auditLogsByUser(userId, debut, fin, page = 0, size = 30) {
   const r = await api.get(`/admin/audit-logs/utilisateur/${userId}`, {
-    params: { debut, fin },
+    params: { debut, fin, page, size, sort: 'dateAction,desc' },
   });
   return r.data;
 }

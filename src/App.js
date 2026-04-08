@@ -34,6 +34,7 @@ import AidesFinancieres from './dashboard/AidesFinancieres';
 import AuditLogs from './dashboard/AuditLogs';
 import ParametresSysteme from './dashboard/ParametresSysteme';
 import ActualitesPublic from './pages/ActualitesPublic';
+import AvisPublic from './pages/AvisPublic';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import './App.css';
@@ -54,6 +55,7 @@ function App() {
           <Route path="/inscription"  element={<Register />} />
           <Route path="/validation"   element={<Validation />} />
           <Route path="/actualites"          element={<ActualitesPublic />} />
+          <Route path="/avis/:token"         element={<AvisPublic />} />
           <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
           <Route path="/reinitialiser-mdp"   element={<ResetPassword />} />
           <Route path="/dashboard"    element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>

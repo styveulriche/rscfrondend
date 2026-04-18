@@ -109,3 +109,77 @@ export async function countUsersByDiaspora(statut) {
 	const r = await api.get(`/utilisateurs/count/diaspora/${statut}`);
 	return r.data;
 }
+
+/** Solde du portefeuille de l'utilisateur connecté — GET /utilisateurs/mon-solde */
+export async function getMonSolde() {
+	const r = await api.get('/utilisateurs/mon-solde');
+	return r.data; // { solde: BigDecimal, devise: string }
+}
+
+// ── Photo de profil ──────────────────────────────────────────
+
+/**
+ * Mise à jour complète du profil (multipart) — PUT /utilisateurs/{id}/profil
+ * Champs : nom?, prenom?, telephone?, dateNaissance?, sexe?, photo?
+ * On passe également paysOrigine, statutDiaspora, email s'ils sont fournis.
+ */
+export async function updateProfil(id, fields = {}) {
+	const form = new FormData();
+	const append = (key, val) => { if (val !== undefined && val !== null) form.append(key, val); };
+	append('nom',            fields.nom);
+	append('prenom',         fields.prenom);
+	append('email',          fields.email);
+	append('telephone',      fields.telephone);
+	append('dateNaissance',  fields.dateNaissance);
+	append('sexe',           fields.sexe);
+	append('paysOrigine',    fields.paysOrigine);
+	append('statutDiaspora', fields.statutDiaspora);
+	if (fields.photo) form.append('photo', fields.photo); // File object
+	const r = await api.put(`/utilisateurs/${id}/profil`, form, {
+		headers: { 'Content-Type': 'multipart/form-data' },
+	});
+	return r.data;
+}
+
+/**
+ * Upload / remplacement de la photo seule — PUT /utilisateurs/{id}/photo-profil
+ * multipart : photo=<File>
+ */
+export async function uploadPhotoProfile(id, file) {
+	const form = new FormData();
+	form.append('photo', file);
+	const r = await api.put(`/utilisateurs/${id}/photo-profil`, form, {
+		headers: { 'Content-Type': 'multipart/form-data' },
+	});
+	return r.data;
+}
+
+/** Supprime la photo de profil — DELETE /utilisateurs/{id}/photo-profil */
+export async function deletePhotoProfile(id) {
+	await api.delete(`/utilisateurs/${id}/photo-profil`);
+}
+
+// ── QR Code parrainage (accès public) ────────────────────────
+
+/**
+ * Retourne { base64: string, contentType?: string } — GET /utilisateurs/{id}/parrainage/qrcode/base64
+ * Utiliser pour <img src={`data:image/png;base64,${data.base64}`} />
+ */
+export async function getQrCodeBase64(id) {
+	const r = await api.get(`/utilisateurs/${id}/parrainage/qrcode/base64`);
+	return r.data;
+}
+
+/** URL directe du QR code inline (image/png) — accès public, utilisable dans <img src> */
+export function getQrCodeUrl(id) {
+	const base = process.env.REACT_APP_API_BASE_URL?.trim()
+		|| `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
+	return `${base}/utilisateurs/${id}/parrainage/qrcode`;
+}
+
+/** URL de téléchargement du QR code (attachment) — accès public */
+export function getQrCodeDownloadUrl(id) {
+	const base = process.env.REACT_APP_API_BASE_URL?.trim()
+		|| `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
+	return `${base}/utilisateurs/${id}/parrainage/qrcode/download`;
+}

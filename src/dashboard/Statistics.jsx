@@ -477,7 +477,7 @@ function Statistics() {
           <div className="probation-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
               <FaClock size={16} color="rgba(255,255,255,0.8)" />
-              <p className="probation-label" style={{ margin: 0 }}>Durée restante de votre période probatoire</p>
+              <p className="probation-label" style={{ margin: 0 }}>Couvert</p>
             </div>
             <p className="probation-note">
               Statut : <strong>{probationInfo?.label || '—'}</strong> · Durée : <strong>{durationText}</strong>

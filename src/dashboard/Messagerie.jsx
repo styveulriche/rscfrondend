@@ -7,7 +7,7 @@ import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import {
   createSupportTicket, listMyTickets, getMyTicketDetail, replyToMyTicket,
-  listAllTickets, getTicketDetail, updateTicketStatus, adminReplyToTicket,
+  listAllTickets, getTicketDetail, updateTicketStatus, adminReplyToTicket, assignTicket,
 } from '../services/messages';
 import { sendNotification } from '../services/notifications';
 
@@ -144,7 +144,7 @@ function TicketThread({ detail, isAdmin: isAdminView, onReply, replyText, onRepl
   );
 }
 
-/* ── Vue Admin ──────────────────────────────────────────────── */
+/* ── Vue Admin ─────────────────────────────────────────────── */
 
 const STATUS_TABS = [
   { value: '', label: 'Tous' },
@@ -154,7 +154,8 @@ const STATUS_TABS = [
   { value: 'FERME', label: 'Fermés' },
 ];
 
-function AdminMessagerieView() {
+export function AdminMessagerieView() {
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState('');
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -166,6 +167,7 @@ function AdminMessagerieView() {
   const [replying, setReplying] = useState(false);
   const [replyError, setReplyError] = useState(null);
   const [statusChanging, setStatusChanging] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   const loadTickets = useCallback(async () => {
     setLoading(true);
@@ -244,6 +246,18 @@ function AdminMessagerieView() {
       loadTickets();
     } catch { /* silent */ } finally {
       setStatusChanging(false);
+    }
+  };
+
+  const handleAssign = async (ticketId) => {
+    if (!user?.id) return;
+    setAssigning(true);
+    try {
+      const updated = await assignTicket(ticketId, user.id);
+      if (selectedId === ticketId) setDetail(updated);
+      loadTickets();
+    } catch { /* silent */ } finally {
+      setAssigning(false);
     }
   };
 
@@ -348,6 +362,18 @@ function AdminMessagerieView() {
                     <span style={{ marginLeft: 12 }}>{formatTime(ticket.dateCreation)}</span>
                   </p>
                 </div>
+                {!ticket.adminAssigneNom && ticket.statut !== 'FERME' && (
+                  <button
+                    type="button"
+                    className="btn-small"
+                    style={{ flexShrink: 0, fontSize: 11, padding: '4px 10px' }}
+                    onClick={(e) => { e.stopPropagation(); handleAssign(ticket.id); }}
+                    disabled={assigning}
+                  >
+                    <FaUserShield size={10} style={{ marginRight: 4 }} />
+                    S'assigner
+                  </button>
+                )}
                 {isOpen ? <FaChevronUp size={12} color="var(--text-gray)" /> : <FaChevronDown size={12} color="var(--text-gray)" />}
               </div>
 
@@ -380,7 +406,7 @@ function AdminMessagerieView() {
 
 const DEFAULT_COMPOSE = { sujet: '', contenu: '', niveauUrgence: 'NORMAL' };
 
-function UserMessagerieView() {
+export function UserMessagerieView() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);

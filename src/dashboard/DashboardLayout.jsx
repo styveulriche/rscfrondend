@@ -5,11 +5,25 @@ import {
   FaExclamationCircle, FaSearch, FaEnvelope, FaBell, FaCog,
   FaSignOutAlt, FaUserCircle, FaBars, FaTimes, FaMapMarkerAlt,
   FaUserShield, FaUsersCog, FaClipboardList, FaLock, FaExclamationTriangle,
-  FaFileInvoiceDollar, FaNewspaper, FaHandHoldingUsd, FaShieldAlt, FaSlidersH,
+  FaFileInvoiceDollar, FaNewspaper, FaHandHoldingUsd, FaShieldAlt, FaSlidersH, FaHandshake,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { getUnreadCount } from '../services/notifications';
+import { listMyTickets } from '../services/messages';
 import { isProfileIncomplete } from '../components/PrivateRoute';
+
+const MEDIA_ORIGIN = (() => {
+  const full = process.env.REACT_APP_API_BASE_URL?.trim()
+    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
+  try { return new URL(full).origin; } catch { return ''; }
+})();
+
+const normalizeList = (p) => {
+  if (!p) return [];
+  if (Array.isArray(p)) return p;
+  if (Array.isArray(p?.content)) return p.content;
+  return [];
+};
 
 const baseMenuItems = [
   { path: 'statistiques',  label: 'Statistiques',            Icon: FaChartBar },
@@ -22,10 +36,18 @@ const baseMenuItems = [
   { path: 'suivi',         label: 'Suivi',                   Icon: FaSearch },
 ];
 
-const menuBottom = [
+// Pour les utilisateurs réguliers : messagerie fusionnée dans notifications
+const menuBottomUser = [
+  { path: 'profil',        label: 'Mon profil',              Icon: FaUserCircle },
+  { path: 'adresses',      label: 'Adresses',                Icon: FaMapMarkerAlt },
+  { path: 'notifications', label: 'Messagerie',               Icon: FaBell },
+  { path: 'parametres',    label: 'Paramètres',              Icon: FaCog },
+];
+
+// Pour les admins : messagerie et notifications restent séparées
+const menuBottomAdmin = [
   { path: 'profil',        label: 'Mon profil',     Icon: FaUserCircle },
   { path: 'messagerie',    label: 'Messagerie',     Icon: FaEnvelope },
-  { path: 'adresses',      label: 'Adresses',       Icon: FaMapMarkerAlt },
   { path: 'notifications', label: 'Notifications',  Icon: FaBell },
   { path: 'parametres',    label: 'Paramètres',     Icon: FaCog },
 ];
@@ -39,25 +61,30 @@ function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const profileLocked = !isAdmin && isProfileIncomplete(user);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
-    // Les admins n'ont pas de notifications utilisateur sur cet endpoint
     if (!user?.id || isAdmin) return;
-    const fetchUnread = async () => {
+    const fetchCounts = async () => {
       try {
+        // Notifications non lues
         const res = await getUnreadCount();
-        if (typeof res === 'number') {
-          setUnreadCount(res);
-        } else if (res && typeof res === 'object') {
+        if (typeof res === 'number') setUnreadCount(res);
+        else if (res && typeof res === 'object') {
           const values = Object.values(res);
           setUnreadCount(values.length > 0 ? values[0] : 0);
         }
-      } catch {
-        // silencieux
-      }
+      } catch { /* silencieux */ }
+
+      try {
+        // Réponses tickets non lues
+        const tickets = await listMyTickets({ page: 0, size: 50 });
+        const list = normalizeList(tickets);
+        setUnreadMessages(list.reduce((sum, t) => sum + (t.reponsesNonLues || 0), 0));
+      } catch { /* silencieux */ }
     };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 20000);
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 20000);
     return () => clearInterval(interval);
   }, [user?.id, isAdmin]);
 
@@ -65,7 +92,12 @@ function DashboardLayout() {
     || [user?.prenom, user?.nom].filter(Boolean).join(' ')
     || user?.email
     || 'Utilisateur';
-  const avatar = user?.photoProfile || user?.avatar || null;
+  const rawAvatar = user?.photoProfile || user?.avatar || null;
+  const avatar = rawAvatar
+    ? (/^(https?:\/\/|blob:|data:)/.test(rawAvatar)
+        ? rawAvatar
+        : `${MEDIA_ORIGIN}${rawAvatar.startsWith('/') ? '' : '/'}${rawAvatar}`)
+    : null;
 
   const handleLogout = () => {
     logout();
@@ -116,6 +148,7 @@ function DashboardLayout() {
     }
     if (isSuperAdmin) {
       adminLinks.push({ path: 'administrateurs', label: 'Gestion administrateurs', Icon: FaUserShield });
+      adminLinks.push({ path: 'partenaires', label: 'Partenaires', Icon: FaHandshake });
       adminLinks.push({ path: 'parametres-systeme', label: 'Paramètres système', Icon: FaSlidersH });
       adminLinks.push({ path: 'audit-logs', label: 'Audit Logs', Icon: FaShieldAlt });
     }
@@ -189,9 +222,13 @@ function DashboardLayout() {
             );
           })}
           <li><div className="sidebar-divider" /></li>
-          {menuBottom.map(({ path, label, Icon }) => {
+          {(isAdmin ? menuBottomAdmin : menuBottomUser).map(({ path, label, Icon }) => {
             const isParametres = path === 'parametres';
             const locked = profileLocked && !isParametres;
+            // Badge combiné : sur l'entrée notifications (utilisateurs) ou messagerie (admins)
+            const showBadge = !isAdmin && path === 'notifications'
+              ? unreadCount + unreadMessages
+              : 0;
             return (
               <li key={path}>
                 {locked ? (
@@ -202,9 +239,20 @@ function DashboardLayout() {
                   </span>
                 ) : (
                   <Link to={`/dashboard/${path}`} className={currentPath === path ? 'active' : ''}
-                    onClick={() => setSidebarOpen(false)}>
+                    onClick={() => setSidebarOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center' }}>
                     <Icon size={15} style={{ marginRight: 10, verticalAlign: 'middle', opacity: 0.85, flexShrink: 0 }} />
-                    {label}
+                    <span style={{ flex: 1 }}>{label}</span>
+                    {showBadge > 0 && (
+                      <span style={{
+                        background: 'var(--red-primary)', color: 'white',
+                        borderRadius: '50%', minWidth: 18, height: 18,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, padding: '0 3px', marginLeft: 4,
+                      }}>
+                        {showBadge > 99 ? '99+' : showBadge}
+                      </span>
+                    )}
                   </Link>
                 )}
               </li>
@@ -228,15 +276,15 @@ function DashboardLayout() {
           <div style={{ flex: 1 }} />
           <Link to="/dashboard/notifications" style={{ textDecoration: 'none', position: 'relative', display: 'inline-flex' }}>
             <FaBell size={20} style={{ color: 'var(--text-gray)', cursor: 'pointer' }} />
-            {unreadCount > 0 && (
+            {(unreadCount + unreadMessages) > 0 && (
               <span style={{
                 position: 'absolute', top: -6, right: -6,
                 background: 'var(--red-primary)', color: 'white',
-                borderRadius: '50%', width: 16, height: 16,
+                borderRadius: '50%', minWidth: 16, height: 16,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700, lineHeight: 1,
+                fontSize: 10, fontWeight: 700, lineHeight: 1, padding: '0 2px',
               }}>
-                {unreadCount > 99 ? '99+' : unreadCount}
+                {(unreadCount + unreadMessages) > 99 ? '99+' : (unreadCount + unreadMessages)}
               </span>
             )}
           </Link>

@@ -1,3 +1,81 @@
+/* ===== PARTENAIRES DÉFILANTS ===== */
+@keyframes partenaireScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.partenaires-band {
+  overflow: hidden;
+  background: #fff;
+  padding: 36px 0;
+  border-top: 1px solid #f0dada;
+  border-bottom: 1px solid #f0dada;
+}
+
+.partenaires-band__title {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 22px;
+}
+
+.partenaires-track-wrapper {
+  overflow: hidden;
+  position: relative;
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.partenaires-track {
+  display: flex;
+  width: max-content;
+  animation: partenaireScroll 22s linear infinite;
+}
+
+.partenaires-track:hover {
+  animation-play-state: paused;
+}
+
+.partenaire-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 40px;
+  border-right: 1px solid #f0dada;
+  min-width: 140px;
+  cursor: default;
+  transition: opacity 0.2s;
+}
+
+.partenaire-item:hover {
+  opacity: 0.7;
+}
+
+.partenaire-item img {
+  height: 40px;
+  max-width: 100px;
+  object-fit: contain;
+  filter: grayscale(40%);
+  transition: filter 0.2s;
+}
+
+.partenaire-item:hover img {
+  filter: grayscale(0%);
+}
+
+.partenaire-item__name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red-primary);
+  text-align: center;
+  white-space: nowrap;
+}
+
 /* ===== ANIMATION BOUTON ACTUALITÉS ===== */
 @keyframes navActuPulse {
   0%   { box-shadow: 0 0 0 0 rgba(22,163,74,0.7); background: #16a34a; }
@@ -841,6 +919,7 @@ body {
   padding: 0 20px 20px;
   border-bottom: 1px solid rgba(255,255,255,0.12);
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .sidebar-avatar {
@@ -869,6 +948,14 @@ body {
   list-style: none;
   flex: 1;
   padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+.sidebar-menu::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari */
 }
 
 .sidebar-menu li {
@@ -906,6 +993,7 @@ body {
 
 .sidebar-bottom {
   padding: 0 16px 10px;
+  flex-shrink: 0;
 }
 
 .btn-logout {
@@ -1591,6 +1679,22 @@ body {
   color: var(--red-primary);
 }
 
+/* ===== PAGE CONTACT (wrappers) ===== */
+.contact-info-side {
+  padding: 60px 50px;
+}
+.contact-form-side {
+  padding: 60px 50px;
+}
+
+/* ===== PAGE SERVICES (wrappers) ===== */
+.services-intro {
+  padding: 50px 70px;
+}
+.services-cards {
+  padding: 60px 70px;
+}
+
 /* ===== SERVICE CARDS (page Services) ===== */
 .service-card {
   background: white;
@@ -1822,6 +1926,14 @@ body {
   .footer            { padding: 40px 40px 16px; }
   .footer-content    { grid-template-columns: 1.5fr 1fr 1.5fr; gap: 28px; }
 
+  /* Services page wrappers */
+  .services-intro     { padding: 40px 40px; }
+  .services-cards     { padding: 50px 40px; }
+
+  /* Contact page sides */
+  .contact-info-side  { padding: 50px 36px; }
+  .contact-form-side  { padding: 50px 36px; }
+
   /* Dashboard — sidebar masquable dès la tablette */
   .sidebar {
     transform: translateX(-100%);
@@ -1866,7 +1978,7 @@ body {
   .services-section   { padding: 36px 20px; }
   .quote-section      { padding: 32px 20px; }
   .quote-section blockquote { font-size: 16px; }
-  .services-section > div[style] { grid-template-columns: repeat(2, 1fr) !important; }
+  .services-section > div[style] { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
 
   /* Footer */
   .footer             { padding: 32px 20px 16px; }
@@ -1910,6 +2022,15 @@ body {
 
   /* Messagerie */
   .messagerie-layout  { grid-template-columns: 1fr !important; }
+
+  /* Contact */
+  .contact-grid       { grid-template-columns: 1fr !important; }
+  .contact-info-side  { padding: 36px 20px; }
+  .contact-form-side  { padding: 36px 20px; }
+
+  /* Services page */
+  .services-intro     { padding: 36px 20px !important; }
+  .services-cards     { padding: 36px 20px !important; }
 }
 
 /* ===== RESPONSIVE — SMALL MOBILE (≤ 480px) ===== */
@@ -1928,8 +2049,8 @@ body {
   .services-section   { padding: 28px 16px; }
   .about-section      { padding: 28px 16px; }
   .savoir-section     { padding: 28px 16px; }
-  /* Services : 2 colonnes même sur très petit écran */
-  .services-section > div[style] { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Services : 2 colonnes sur petit écran */
+  .services-section > div[style] { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
 
   /* Footer */
   .footer             { padding: 28px 16px 14px; }
@@ -1963,6 +2084,10 @@ body {
 
   /* Contact & Services */
   .contact-grid       { grid-template-columns: 1fr !important; }
+  .contact-info-side  { padding: 28px 16px; }
+  .contact-form-side  { padding: 28px 16px; }
+  .services-intro     { padding: 28px 16px !important; }
+  .services-cards     { padding: 28px 16px !important; }
 }
 
 /* ===== UTILITAIRES RESPONSIVE ===== */
@@ -2126,4 +2251,54 @@ body {
     justify-content: center;
     gap: 6px;
   }
+}
+
+/* ===== RESPONSIVE — ULTRA-SMALL MOBILE (≤ 360px) ===== */
+@media (max-width: 360px) {
+  /* Navbar : masquer le sous-titre "CANADA" pour économiser la largeur */
+  .navbar             { padding: 10px 14px; }
+  .navbar-logo span:last-child { display: none; }
+  .logo-circle        { width: 38px; height: 38px; font-size: 12px; }
+
+  /* Hero */
+  .page-hero          { min-height: 360px; }
+  .page-hero-content  { padding: 28px 14px; }
+  .page-hero-title    { font-size: 19px; }
+  .page-hero-sub      { font-size: 12px; }
+  .hero-buttons       { flex-direction: column; align-items: stretch; }
+  .btn-outline-white,
+  .btn-red            { text-align: center; width: 100%; font-size: 13px; }
+
+  /* 2FA : réduire la taille des cases pour tenir sur 320px */
+  .twofa-modal        { padding: 20px 12px 18px; }
+  .twofa-digits       { gap: 4px; }
+  .twofa-digit        { width: 38px; height: 46px; font-size: 16px; border-radius: 7px; }
+
+  /* Auth */
+  .auth-form-side     { padding: 28px 16px; }
+
+  /* Dashboard */
+  .dashboard-content  { padding: 10px; }
+  .content-card       { padding: 12px; }
+  .stat-value         { font-size: 20px; }
+  .stats-row          { gap: 6px; }
+
+  /* Validation */
+  .validation-card    { padding: 18px 12px; }
+  .step-line          { width: 24px; }
+  .step-circle        { width: 30px; height: 30px; font-size: 13px; }
+
+  /* Services page */
+  .services-intro     { padding: 22px 14px !important; }
+  .services-cards     { padding: 22px 14px !important; }
+  /* Services home : 1 colonne sur 320px */
+  .services-section > div[style] { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+
+  /* Sections publiques */
+  .pourquoi-section,
+  .about-section,
+  .savoir-section     { padding: 22px 14px; }
+  .footer             { padding: 22px 14px 12px; }
+  .quote-section      { padding: 24px 14px; }
+  .quote-section blockquote { font-size: 14px; }
 }

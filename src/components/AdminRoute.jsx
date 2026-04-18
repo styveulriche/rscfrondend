@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-function AdminRoute({ children, allowedRoles }) {
+function AdminRoute({ children, allowedRoles, fallback }) {
   const { user, loading, isAdmin, hasRole } = useAuth();
 
   if (loading) {
@@ -21,7 +21,7 @@ function AdminRoute({ children, allowedRoles }) {
     : isAdmin;
 
   if (!allowed) {
-    return <Navigate to="/dashboard" replace />;
+    return fallback ?? <Navigate to="/dashboard" replace />;
   }
 
   return children;

@@ -1,5 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
-import { FaBell, FaBellSlash, FaCheckDouble, FaPaperPlane, FaSearch, FaTrash } from 'react-icons/fa';
+import {
+  FaBell, FaBellSlash, FaCheckDouble, FaPaperPlane,
+  FaSearch, FaTrash, FaEnvelope,
+} from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -10,8 +13,12 @@ import {
   previewNotificationRecipients,
   sendNotification,
 } from '../services/notifications';
+import { listMyTickets } from '../services/messages';
+import { AdminMessagerieView, UserMessagerieView } from './Messagerie';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
+
+/* ── helpers ─────────────────────────────────────────────────── */
 
 const normalizeList = (payload) => {
   if (!payload) return [];
@@ -28,55 +35,51 @@ const formatTime = (value) => {
   return date.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
+/* ── Options compositeur ─────────────────────────────────────── */
+
 const AUDIENCE_OPTIONS = [
-  { value: 'ALL', label: 'Tous les utilisateurs' },
+  { value: 'ALL',      label: 'Tous les utilisateurs' },
   { value: 'FILTERED', label: 'Filtrer par statut' },
-  { value: 'CUSTOM', label: 'IDs spécifiques (UUID)' },
+  { value: 'CUSTOM',   label: 'IDs spécifiques (UUID)' },
 ];
 
 const ACCOUNT_STATUS_OPTIONS = [
-  { value: '', label: '-- Statut de compte --' },
-  { value: 'ACTIF', label: 'Actif' },
-  { value: 'EN_ATTENTE', label: 'En attente' },
-  { value: 'EN_VERIFICATION', label: 'En vérification' },
-  { value: 'SUSPENDU', label: 'Suspendu' },
-  { value: 'INACTIF', label: 'Inactif' },
+  { value: '',                   label: '-- Statut de compte --' },
+  { value: 'ACTIF',              label: 'Actif' },
+  { value: 'EN_ATTENTE',         label: 'En attente' },
+  { value: 'EN_VERIFICATION',    label: 'En vérification' },
+  { value: 'SUSPENDU',           label: 'Suspendu' },
+  { value: 'INACTIF',            label: 'Inactif' },
 ];
 
 const DIASPORA_STATUS_OPTIONS = [
-  { value: '', label: '-- Statut diaspora --' },
-  { value: 'RESIDENT_PERMANENT', label: 'Résident permanent' },
-  { value: 'CITOYEN_CANADIEN', label: 'Citoyen canadien' },
-  { value: 'ETUDIANT_INTERNATIONAL', label: 'Étudiant international' },
-  { value: 'TRAVAILLEUR_TEMPORAIRE', label: 'Travailleur temporaire' },
-  { value: 'VISITEUR_LONG_SEJOUR', label: 'Visiteur long séjour' },
-  { value: 'REFUGIE', label: 'Réfugié' },
+  { value: '',                         label: '-- Statut diaspora --' },
+  { value: 'RESIDENT_PERMANENT',       label: 'Résident permanent' },
+  { value: 'CITOYEN_CANADIEN',         label: 'Citoyen canadien' },
+  { value: 'ETUDIANT_INTERNATIONAL',   label: 'Étudiant international' },
+  { value: 'TRAVAILLEUR_TEMPORAIRE',   label: 'Travailleur temporaire' },
+  { value: 'VISITEUR_LONG_SEJOUR',     label: 'Visiteur long séjour' },
+  { value: 'REFUGIE',                  label: 'Réfugié' },
 ];
 
 const DEFAULT_COMPOSER = {
-  title: '',
-  message: '',
-  audience: 'ALL',
-  accountStatus: '',
-  diasporaStatus: '',
-  identifiers: '',
-  type: 'INFO',
-  priority: 'NORMAL',
-  actionUrl: '',
+  title: '', message: '', audience: 'ALL',
+  accountStatus: '', diasporaStatus: '', identifiers: '',
+  type: 'INFO', priority: 'NORMAL', actionUrl: '',
 };
 
 const TYPE_OPTIONS = [
-  { value: 'INFO', label: 'Information' },
-  { value: 'ALERTE', label: 'Alerte' },
-  { value: 'SUCCESS', label: 'Succès' },
-  { value: 'AVERTISSEMENT', label: 'Avertissement' },
-  { value: 'RAPPEL', label: 'Rappel' },
-  { value: 'ERREUR', label: 'Erreur' },
+  { value: 'INFO',         label: 'Information' },
+  { value: 'ALERTE',       label: 'Alerte' },
+  { value: 'SUCCESS',      label: 'Succès' },
+  { value: 'AVERTISSEMENT',label: 'Avertissement' },
+  { value: 'RAPPEL',       label: 'Rappel' },
+  { value: 'ERREUR',       label: 'Erreur' },
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: 'NORMAL', label: 'Normale' },
-  { value: 'HAUTE', label: 'Haute' },
+  { value: 'NORMAL',   label: 'Normale' },
+  { value: 'HAUTE',    label: 'Haute' },
   { value: 'CRITIQUE', label: 'Critique' },
 ];
 
@@ -85,7 +88,9 @@ const parseList = (value) => (value || '')
   .map((item) => item.trim())
   .filter(Boolean);
 
-function Notifications() {
+/* ── Onglet Notifications ─────────────────────────────────────── */
+
+function NotificationsTab({ unreadMessages }) {
   const { user, hasRole } = useAuth();
   const [status, setStatus] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
@@ -104,11 +109,7 @@ function Notifications() {
   const { data, loading, refresh, lastUpdated, error } = useRealtimeResource(
     `notifications-${user?.id || 'guest'}`,
     fetcher,
-    {
-      enabled: Boolean(user?.id),
-      immediate: Boolean(user?.id),
-      interval: REALTIME_INTERVALS.notifications,
-    },
+    { enabled: Boolean(user?.id), immediate: Boolean(user?.id), interval: REALTIME_INTERVALS.notifications },
   );
 
   const notifications = useMemo(() => normalizeList(data).map((item, idx) => ({
@@ -116,7 +117,6 @@ function Notifications() {
     titre: item?.titre || 'Notification',
     message: item?.message || '',
     type: item?.type || '',
-    typeLibelle: item?.typeLibelle || item?.type || '',
     typeCouleur: item?.typeCouleur || null,
     priorite: item?.priorite || '',
     dateEnvoi: item?.dateEnvoi || null,
@@ -156,7 +156,6 @@ function Notifications() {
       setComposerStatus({ type: 'error', message: 'Sélectionnez une audience ou des filtres valides.' });
       return;
     }
-
     const payload = {
       titre: composer.title.trim(),
       message: composer.message.trim(),
@@ -165,7 +164,6 @@ function Notifications() {
       actionUrl: composer.actionUrl || undefined,
       filtre: filters,
     };
-
     setSending(true);
     setComposerStatus(null);
     try {
@@ -206,8 +204,7 @@ function Notifications() {
       await markAllNotificationsRead();
       await refresh();
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Impossible de mettre à jour les notifications.';
-      setStatus({ type: 'error', message });
+      setStatus({ type: 'error', message: err?.response?.data?.message || err?.message || 'Impossible de mettre à jour.' });
     } finally {
       setUpdatingId(null);
     }
@@ -221,8 +218,7 @@ function Notifications() {
       await markNotificationRead(notification.id);
       await refresh();
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Action impossible.';
-      setStatus({ type: 'error', message });
+      setStatus({ type: 'error', message: err?.response?.data?.message || err?.message || 'Action impossible.' });
     } finally {
       setUpdatingId(null);
     }
@@ -236,8 +232,7 @@ function Notifications() {
       await deleteNotification(notification.id);
       await refresh();
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Suppression impossible.';
-      setStatus({ type: 'error', message });
+      setStatus({ type: 'error', message: err?.response?.data?.message || err?.message || 'Suppression impossible.' });
     } finally {
       setUpdatingId(null);
     }
@@ -245,8 +240,7 @@ function Notifications() {
 
   return (
     <div>
-      <StatsRow />
-
+      {/* Compositeur (admins seulement) */}
       {canSendNotifications && (
         <div className="content-card" style={{ marginBottom: 20 }}>
           <h3 className="content-card-title" style={{ marginBottom: 10 }}>Envoyer une notification</h3>
@@ -254,74 +248,44 @@ function Notifications() {
             <div className="settings-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
               <div>
                 <p className="settings-label">Titre</p>
-                <input
-                  className="form-input"
-                  placeholder="Titre de la notification"
-                  value={composer.title}
-                  onChange={(e) => setComposer((prev) => ({ ...prev, title: e.target.value }))}
-                  required
-                />
+                <input className="form-input" placeholder="Titre de la notification"
+                  value={composer.title} onChange={(e) => setComposer((p) => ({ ...p, title: e.target.value }))} required />
               </div>
               <div>
                 <p className="settings-label">Type</p>
-                <select
-                  className="form-input"
-                  value={composer.type}
-                  onChange={(e) => setComposer((prev) => ({ ...prev, type: e.target.value }))}
-                >
-                  {TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
+                <select className="form-input" value={composer.type}
+                  onChange={(e) => setComposer((p) => ({ ...p, type: e.target.value }))}>
+                  {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <p className="settings-label">Priorité</p>
-                <select
-                  className="form-input"
-                  value={composer.priority}
-                  onChange={(e) => setComposer((prev) => ({ ...prev, priority: e.target.value }))}
-                >
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
+                <select className="form-input" value={composer.priority}
+                  onChange={(e) => setComposer((p) => ({ ...p, priority: e.target.value }))}>
+                  {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <p className="settings-label">Audience</p>
-                <select
-                  className="form-input"
-                  value={composer.audience}
-                  onChange={(e) => setComposer((prev) => ({ ...prev, audience: e.target.value }))}
-                >
-                  {AUDIENCE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
+                <select className="form-input" value={composer.audience}
+                  onChange={(e) => setComposer((p) => ({ ...p, audience: e.target.value }))}>
+                  {AUDIENCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               {composer.audience === 'FILTERED' && (
                 <>
                   <div>
                     <p className="settings-label">Statut de compte</p>
-                    <select
-                      className="form-input"
-                      value={composer.accountStatus}
-                      onChange={(e) => setComposer((prev) => ({ ...prev, accountStatus: e.target.value }))}
-                    >
-                      {ACCOUNT_STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
+                    <select className="form-input" value={composer.accountStatus}
+                      onChange={(e) => setComposer((p) => ({ ...p, accountStatus: e.target.value }))}>
+                      {ACCOUNT_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
                     <p className="settings-label">Statut diaspora</p>
-                    <select
-                      className="form-input"
-                      value={composer.diasporaStatus}
-                      onChange={(e) => setComposer((prev) => ({ ...prev, diasporaStatus: e.target.value }))}
-                    >
-                      {DIASPORA_STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
+                    <select className="form-input" value={composer.diasporaStatus}
+                      onChange={(e) => setComposer((p) => ({ ...p, diasporaStatus: e.target.value }))}>
+                      {DIASPORA_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                 </>
@@ -331,44 +295,25 @@ function Notifications() {
             {composer.audience === 'CUSTOM' && (
               <div style={{ marginTop: 12 }}>
                 <p className="settings-label">Identifiants utilisateurs (UUID, séparés par virgule ou retour à la ligne)</p>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  placeholder="uuid-1, uuid-2"
-                  value={composer.identifiers}
-                  onChange={(e) => setComposer((prev) => ({ ...prev, identifiers: e.target.value }))}
-                />
+                <textarea className="form-input" rows={3} placeholder="uuid-1, uuid-2"
+                  value={composer.identifiers} onChange={(e) => setComposer((p) => ({ ...p, identifiers: e.target.value }))} />
               </div>
             )}
 
             <div style={{ marginTop: 12 }}>
               <p className="settings-label">Message</p>
-              <textarea
-                className="form-input"
-                rows={4}
-                placeholder="Contenu de la notification"
-                value={composer.message}
-                onChange={(e) => setComposer((prev) => ({ ...prev, message: e.target.value }))}
-                required
-              />
+              <textarea className="form-input" rows={4} placeholder="Contenu de la notification"
+                value={composer.message} onChange={(e) => setComposer((p) => ({ ...p, message: e.target.value }))} required />
             </div>
-
             <div style={{ marginTop: 12 }}>
               <p className="settings-label">Lien d'action (optionnel)</p>
-              <input
-                className="form-input"
-                placeholder="https://exemple.com"
-                value={composer.actionUrl}
-                onChange={(e) => setComposer((prev) => ({ ...prev, actionUrl: e.target.value }))}
-              />
+              <input className="form-input" placeholder="https://exemple.com"
+                value={composer.actionUrl} onChange={(e) => setComposer((p) => ({ ...p, actionUrl: e.target.value }))} />
             </div>
 
             {composerStatus && (
               <div style={{
-                margin: '12px 0',
-                padding: '10px 12px',
-                borderRadius: 8,
-                fontSize: 13,
+                margin: '12px 0', padding: '10px 12px', borderRadius: 8, fontSize: 13,
                 background: composerStatus.type === 'success' ? 'rgba(46,125,50,0.15)' : 'rgba(198,40,40,0.15)',
                 color: composerStatus.type === 'success' ? '#2e7d32' : '#c62828',
               }}>
@@ -377,21 +322,8 @@ function Notifications() {
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
-              <button
-                type="button"
-                onClick={handlePreviewRecipients}
-                disabled={previewState.loading}
-                style={{
-                  border: '1px solid var(--pink-light)',
-                  background: 'white',
-                  color: 'var(--red-primary)',
-                  borderRadius: 8,
-                  padding: '10px 16px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
+              <button type="button" onClick={handlePreviewRecipients} disabled={previewState.loading}
+                style={{ border: '1px solid var(--pink-light)', background: 'white', color: 'var(--red-primary)', borderRadius: 8, padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
                 <FaSearch size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
                 {previewState.loading ? 'Prévisualisation…' : 'Prévisualiser les destinataires'}
               </button>
@@ -405,9 +337,7 @@ function Notifications() {
           {(previewState.error || previewState.recipients.length > 0) && (
             <div style={{ marginTop: 16 }}>
               <p className="settings-label" style={{ marginBottom: 6 }}>Destinataires prévus</p>
-              {previewState.error && (
-                <div style={{ color: 'var(--red-primary)', fontSize: 13 }}>{previewState.error}</div>
-              )}
+              {previewState.error && <div style={{ color: 'var(--red-primary)', fontSize: 13 }}>{previewState.error}</div>}
               {!previewState.error && previewState.recipients.length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--text-gray)' }}>Aucun destinataire ne correspond à ces filtres.</div>
               )}
@@ -423,12 +353,12 @@ function Notifications() {
                       </tr>
                     </thead>
                     <tbody>
-                      {previewState.recipients.map((recipient) => (
-                        <tr key={recipient.id} style={{ borderTop: '1px solid #f1f1f1' }}>
-                          <td style={{ padding: '6px 10px' }}>{`${recipient.prenom || ''} ${recipient.nom || ''}`.trim() || recipient.username || recipient.email}</td>
-                          <td style={{ padding: '6px 10px' }}>{recipient.email || '—'}</td>
-                          <td style={{ padding: '6px 10px' }}>{recipient.statutCompte || '—'}</td>
-                          <td style={{ padding: '6px 10px' }}>{recipient.statutDiaspora || '—'}</td>
+                      {previewState.recipients.map((r) => (
+                        <tr key={r.id} style={{ borderTop: '1px solid #f1f1f1' }}>
+                          <td style={{ padding: '6px 10px' }}>{`${r.prenom || ''} ${r.nom || ''}`.trim() || r.username || r.email}</td>
+                          <td style={{ padding: '6px 10px' }}>{r.email || '—'}</td>
+                          <td style={{ padding: '6px 10px' }}>{r.statutCompte || '—'}</td>
+                          <td style={{ padding: '6px 10px' }}>{r.statutDiaspora || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -440,8 +370,9 @@ function Notifications() {
         </div>
       )}
 
+      {/* Liste des notifications */}
       <div className="content-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
           <h3 className="content-card-title" style={{ margin: 0 }}>
             <FaBell size={14} style={{ marginRight: 8, color: 'var(--red-primary)', verticalAlign: 'middle' }} />
             Notifications
@@ -451,10 +382,10 @@ function Notifications() {
               </span>
             )}
           </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {lastUpdated && (
               <span style={{ fontSize: 12, color: 'var(--text-gray)' }}>
-                Mise à jour {new Date(lastUpdated).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                Mis à jour {new Date(lastUpdated).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
             <button style={{ background: 'none', border: 'none', color: 'var(--red-primary)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
@@ -467,25 +398,19 @@ function Notifications() {
           </div>
         </div>
 
-        {status && (
-          <div style={{ color: 'var(--red-primary)', fontSize: 12, marginBottom: 12 }}>{status.message}</div>
-        )}
-        {error && (
-          <div style={{ color: 'var(--red-primary)', fontSize: 12, marginBottom: 12 }}>Impossible de récupérer les notifications.</div>
-        )}
-
+        {status && <div style={{ color: 'var(--red-primary)', fontSize: 12, marginBottom: 12 }}>{status.message}</div>}
+        {error && <div style={{ color: 'var(--red-primary)', fontSize: 12, marginBottom: 12 }}>Impossible de récupérer les notifications.</div>}
         {notifications.length === 0 && !loading && (
           <div style={{ textAlign: 'center', color: 'var(--text-gray)', padding: '20px 0' }}>Aucune notification.</div>
         )}
 
         {notifications.map((n) => (
-          <div className="notification-item" key={n.id} style={{ background: n.read ? 'transparent' : 'var(--pink-ultra-light)', borderRadius: 8, marginBottom: 4 }}>
+          <div className="notification-item" key={n.id}
+            style={{ background: n.read ? 'transparent' : 'var(--pink-ultra-light)', borderRadius: 8, marginBottom: 4 }}>
             <div className={`notification-dot ${n.read ? 'read' : ''}`} />
             <div style={{ flex: 1 }}>
               <p className="notification-text" style={{ fontWeight: n.read ? 400 : 600, margin: 0 }}>{n.titre}</p>
-              {n.message && (
-                <p style={{ fontSize: 12, color: 'var(--text-gray)', margin: '2px 0 0' }}>{n.message}</p>
-              )}
+              {n.message && <p style={{ fontSize: 12, color: 'var(--text-gray)', margin: '2px 0 0' }}>{n.message}</p>}
               <p className="notification-time">{formatTime(n.dateEnvoi)}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -505,6 +430,114 @@ function Notifications() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ── Hub unifié ───────────────────────────────────────────────── */
+
+function Notifications() {
+  const { isAdmin, hasRole, user } = useAuth();
+  const [activeTab, setActiveTab] = useState('notifications');
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Compte les réponses non lues dans les tickets (utilisateurs seulement)
+  const refreshMessageCount = useCallback(async () => {
+    if (!user?.id || isAdmin) return;
+    try {
+      const data = await listMyTickets({ page: 0, size: 50 });
+      const list = normalizeList(data);
+      const count = list.reduce((sum, t) => sum + (t.reponsesNonLues || 0), 0);
+      setUnreadMessages(count);
+    } catch { /* silencieux */ }
+  }, [user?.id, isAdmin]);
+
+  // Rafraîchit le compteur au montage
+  useState(() => { refreshMessageCount(); }, []);
+
+  const showAdminMessaging = isAdmin && hasRole(['SUPER_ADMIN', 'ADMIN_SUPPORT']);
+
+  const tabs = [
+    {
+      key: 'notifications',
+      label: 'Notifications',
+      Icon: FaBell,
+    },
+    {
+      key: 'messages',
+      label: showAdminMessaging ? 'Tickets support' : 'Mes messages',
+      Icon: FaEnvelope,
+      badge: !isAdmin ? unreadMessages : 0,
+    },
+  ];
+
+  return (
+    <div>
+      <StatsRow />
+
+      {/* Barre d'onglets */}
+      <div style={{
+        display: 'flex',
+        gap: 4,
+        marginBottom: 20,
+        borderBottom: '2px solid var(--pink-light)',
+        paddingBottom: 0,
+      }}>
+        {tabs.map(({ key, label, Icon, badge }) => {
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '10px 18px',
+                background: 'none',
+                border: 'none',
+                borderBottom: isActive ? '2px solid var(--red-primary)' : '2px solid transparent',
+                marginBottom: -2,
+                color: isActive ? 'var(--red-primary)' : 'var(--text-gray)',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: 14,
+                cursor: 'pointer',
+                transition: 'color 0.2s',
+                position: 'relative',
+              }}
+            >
+              <Icon size={14} />
+              {label}
+              {badge > 0 && (
+                <span style={{
+                  background: 'var(--red-primary)',
+                  color: 'white',
+                  borderRadius: '50%',
+                  minWidth: 18,
+                  height: 18,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '0 3px',
+                }}>
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Contenu des onglets */}
+      {activeTab === 'notifications' && (
+        <NotificationsTab unreadMessages={unreadMessages} />
+      )}
+      {activeTab === 'messages' && (
+        showAdminMessaging ? <AdminMessagerieView /> : <UserMessagerieView />
+      )}
     </div>
   );
 }

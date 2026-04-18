@@ -82,6 +82,17 @@ export async function walletPayment({ montant, dossierId, description }) {
   return r.data;
 }
 
+// ── Configuration Stripe ─────────────────────────────────────
+
+/**
+ * Récupère la clé publique Stripe depuis le backend — GET /paiements/config
+ * Retourne { publishableKey: string }
+ */
+export async function getStripeConfig() {
+  const r = await api.get('/paiements/config');
+  return r.data;
+}
+
 // ── Flux Stripe PaymentIntent ────────────────────────────────
 
 /**

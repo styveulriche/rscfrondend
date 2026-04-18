@@ -1,9 +1,15 @@
 import { loadStripe } from '@stripe/stripe-js';
+import { getStripeConfig } from '../services/paiements';
 
-const STRIPE_KEY = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
+const ENV_KEY = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
 
-// Ne charge Stripe que si une vraie clé publiable est configurée
-export const stripePromise =
-  STRIPE_KEY && STRIPE_KEY.startsWith('pk_')
-    ? loadStripe(STRIPE_KEY)
-    : null;
+// Si la clé est dans l'env, on charge Stripe immédiatement
+// Sinon on la récupère depuis GET /paiements/config
+export const stripePromise = (ENV_KEY && ENV_KEY.startsWith('pk_'))
+  ? loadStripe(ENV_KEY)
+  : getStripeConfig()
+      .then((cfg) => {
+        const key = cfg?.publishableKey || cfg?.publishable_key || '';
+        return (key && key.startsWith('pk_')) ? loadStripe(key) : null;
+      })
+      .catch(() => null);

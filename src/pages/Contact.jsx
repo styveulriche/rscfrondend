@@ -43,7 +43,7 @@ function Contact() {
       <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 0 }}>
 
         {/* Infos de contact */}
-        <div style={{ background: 'linear-gradient(160deg, #2a0606 0%, #5C1010 100%)', padding: '60px 50px' }}>
+        <div className="contact-info-side" style={{ background: 'linear-gradient(160deg, #2a0606 0%, #5C1010 100%)' }}>
           <h2 style={{ color: 'white', fontSize: 24, fontWeight: 700, marginBottom: 12 }}>{T.coordTitle}</h2>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 1.8, marginBottom: 40 }}>{T.coordDesc}</p>
 
@@ -77,7 +77,7 @@ function Contact() {
         </div>
 
         {/* Formulaire */}
-        <div style={{ background: 'var(--pink-ultra-light)', padding: '60px 50px' }}>
+        <div className="contact-form-side" style={{ background: 'var(--pink-ultra-light)' }}>
           <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-dark)', marginBottom: 8 }}>{T.formTitle}</h2>
           <p style={{ fontSize: 14, color: 'var(--text-gray)', marginBottom: 32 }}>{T.formDesc}</p>
 
@@ -93,7 +93,7 @@ function Contact() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-row-2">
                 <div>
                   <label className="settings-label">{T.labelName}</label>
                   <input className="form-input" type="text" placeholder={T.placeName}

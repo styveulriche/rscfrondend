@@ -32,13 +32,13 @@ function Services() {
       </section>
 
       {/* Intro */}
-      <div style={{ background: 'var(--pink-ultra-light)', padding: '50px 70px', textAlign: 'center' }}>
+      <div className="services-intro" style={{ background: 'var(--pink-ultra-light)', textAlign: 'center' }}>
         <h2 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-dark)', marginBottom: 16 }}>{T.introTitle}</h2>
         <p style={{ fontSize: 15, color: 'var(--text-gray)', maxWidth: 700, margin: '0 auto', lineHeight: 1.8 }}>{T.introText}</p>
       </div>
 
       {/* Cards grid */}
-      <div style={{ padding: '60px 70px', background: 'white' }}>
+      <div className="services-cards" style={{ background: 'white' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 28 }}>
           {T.items.map(({ name, short, desc }, i) => {
             const Icon = icons[i];

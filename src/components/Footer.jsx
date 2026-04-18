@@ -4,12 +4,19 @@ import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaFacebook, FaInstagram, 
 import { useLanguage } from '../context/LanguageContext';
 import translations from '../i18n/translations';
 import { getSocialLinks } from '../services/public';
+import { listPartenairesPublic } from '../services/partenaires';
 
-const PARTENAIRES = [
-  { name: 'Partenaire 1', logo: null },
-  { name: 'Partenaire 2', logo: null },
-  { name: 'Partenaire 3', logo: null },
-];
+const API_ORIGIN = (() => {
+  const full = process.env.REACT_APP_API_BASE_URL?.trim()
+    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
+  try { return new URL(full).origin; } catch { return ''; }
+})();
+
+const buildLogoUrl = (path) => {
+  if (!path) return null;
+  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
+  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const PLATFORM_META = {
   facebook:  { icon: FaFacebook,  color: '#1877F2', label: 'Facebook'  },
@@ -31,6 +38,16 @@ function Footer() {
   const { lang } = useLanguage();
   const T = translations[lang].footer;
   const [socialLinks, setSocialLinks] = useState(SOCIAL_LINKS_FALLBACK);
+  const [partenaires, setPartenaires] = useState([]);
+
+  useEffect(() => {
+    listPartenairesPublic()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []);
+        setPartenaires(list.filter((p) => p.actif !== false && p.active !== false));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     getSocialLinks()
@@ -114,18 +131,33 @@ function Footer() {
           </p>
         </div>
 
-        {/* Partenaires */}
-        <div className="footer-col" style={{ gridColumn: '1 / -1' }}>
-          <h4>Nos Partenaires</h4>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-            {PARTENAIRES.map((p) => (
-              <div key={p.name} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '10px 20px', fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600, minWidth: 120, textAlign: 'center' }}>
-                {p.logo ? <img src={p.logo} alt={p.name} style={{ height: 32 }} /> : p.name}
-              </div>
-            ))}
+      </div>
+
+      {/* Partenaires — bande pleine largeur */}
+      {partenaires.length > 0 && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '20px 40px' }}>
+          <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.45)' }}>
+            Nos partenaires
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 20px', alignItems: 'center' }}>
+            {partenaires.map((p) => {
+              const logoUrl = buildLogoUrl(p.logoUrl || p.logo || p.logoPath);
+              const name = p.nom || p.name || 'Partenaire';
+              return (
+                <div key={p.id || name}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 14px' }}>
+                  {logoUrl && (
+                    <img src={logoUrl} alt={name}
+                      style={{ height: 24, maxWidth: 60, objectFit: 'contain', filter: 'brightness(0) invert(1)', flexShrink: 0 }}
+                      onError={(e) => { e.target.style.display = 'none'; }} />
+                  )}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap' }}>{name}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      )}
 
       <div className="footer-bottom">
         <p>{T.copyright}</p>

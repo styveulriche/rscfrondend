@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   FaUserPlus, FaPhone, FaIdCard, FaUser, FaTrash, FaEdit,
-  FaCheck, FaTimes, FaStar,
+  FaCheck, FaTimes, FaStar, FaFilePdf, FaEye,
 } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
@@ -56,6 +56,7 @@ const mapItem = (item, idx) => ({
   estMineur: Boolean(item?.estMineur),
   estPrincipal: Boolean(item?.estPrincipal),
   idFileName: item?.pieceIdentiteNom || '',
+  idFileUrl: item?.pieceIdentiteUrl || null,
 });
 
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -143,8 +144,74 @@ function FormFields({ data: fd, onChange, onFileChange }) {
   );
 }
 
+/* ── Lightbox pièce d'identité ──────────────────────────────── */
+
+function IdLightbox({ url, name, onClose }) {
+  const isPdf = name?.toLowerCase().endsWith('.pdf');
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 500,
+        background: 'rgba(0,0,0,0.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'white', borderRadius: 14,
+          padding: 16, maxWidth: 640, width: '100%',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-dark)' }}>
+            <FaIdCard size={13} style={{ marginRight: 6, color: 'var(--red-primary)', verticalAlign: 'middle' }} />
+            {name || 'Pièce d\'identité'}
+          </p>
+          <button type="button" onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 18 }}>
+            <FaTimes />
+          </button>
+        </div>
+        {isPdf ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <FaFilePdf size={48} color="#c62828" style={{ marginBottom: 12 }} />
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-gray)', marginBottom: 14 }}>
+              Aperçu non disponible pour les PDF.
+            </p>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'var(--red-primary)', color: 'white',
+                padding: '10px 20px', borderRadius: 8, textDecoration: 'none',
+                fontSize: 13, fontWeight: 600,
+              }}
+            >
+              <FaFilePdf size={13} /> Ouvrir le PDF
+            </a>
+          </div>
+        ) : (
+          <img
+            src={url}
+            alt={name || 'Pièce d\'identité'}
+            style={{ width: '100%', maxHeight: 480, objectFit: 'contain', borderRadius: 8 }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AyantsDroit() {
   const { user } = useAuth();
+  const [lightbox, setLightbox] = useState(null); // { url, name }
   const [form, setForm] = useState(EMPTY_FORM);
   const [editKey, setEditKey] = useState(null);
   const [editData, setEditData] = useState(EMPTY_FORM);
@@ -252,6 +319,9 @@ function AyantsDroit() {
 
   return (
     <div>
+      {lightbox && (
+        <IdLightbox url={lightbox.url} name={lightbox.name} onClose={() => setLightbox(null)} />
+      )}
       <StatsRow />
       <div className="content-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -339,8 +409,28 @@ function AyantsDroit() {
                         Né(e) le {new Date(b.dateNaissance).toLocaleDateString('fr-CA')}
                       </p>
                     )}
-                    {b.idFileName && (
-                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>📎 {b.idFileName}</p>
+                    {b.idFileUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setLightbox({ url: b.idFileUrl, name: b.idFileName })}
+                        style={{
+                          marginTop: 8, background: 'rgba(255,255,255,0.15)',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          borderRadius: 6, padding: '5px 12px',
+                          cursor: 'pointer', color: 'white',
+                          fontSize: 11, display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        {b.idFileName?.toLowerCase().endsWith('.pdf')
+                          ? <FaFilePdf size={11} />
+                          : <FaEye size={11} />}
+                        {b.idFileName || 'Voir la pièce d\'identité'}
+                      </button>
+                    )}
+                    {!b.idFileUrl && b.idFileName && (
+                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>
+                        📎 {b.idFileName}
+                      </p>
                     )}
                   </>
                 )}

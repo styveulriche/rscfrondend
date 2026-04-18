@@ -19,7 +19,6 @@ import Donation from './dashboard/Donation';
 import AyantsDroit from './dashboard/AyantsDroit';
 import Parrainage from './dashboard/Parrainage';
 import Addresses from './dashboard/Addresses';
-import Messagerie from './dashboard/Messagerie';
 import Notifications from './dashboard/Notifications';
 import Parametres from './dashboard/Parametres';
 import Suivi from './dashboard/Suivi';
@@ -30,9 +29,11 @@ import AdminUsers from './dashboard/AdminUsers';
 import DeclarationsAdmin from './dashboard/DeclarationsAdmin';
 import Cotisations from './dashboard/Cotisations';
 import Actualites from './dashboard/Actualites';
+import ActualitesDashboard from './dashboard/ActualitesDashboard';
 import AidesFinancieres from './dashboard/AidesFinancieres';
 import AuditLogs from './dashboard/AuditLogs';
 import ParametresSysteme from './dashboard/ParametresSysteme';
+import Partenaires from './dashboard/Partenaires';
 import ActualitesPublic from './pages/ActualitesPublic';
 import AvisPublic from './pages/AvisPublic';
 import ForgotPassword from './pages/ForgotPassword';
@@ -67,13 +68,23 @@ function App() {
             <Route path="don"          element={<Donation />} />
             <Route path="ayant-droit"  element={<AyantsDroit />} />
             <Route path="parrainage"   element={<Parrainage />} />
-            <Route path="messagerie"   element={<Messagerie />} />
+            {/* messagerie fusionnée dans le hub notifications */}
+            <Route path="messagerie"   element={<Navigate to="/dashboard/notifications" replace />} />
             <Route path="notifications"element={<Notifications />} />
             <Route path="parametres"   element={<Parametres />} />
             <Route path="cotisations"  element={<Cotisations />} />
             <Route path="suivi"        element={<Suivi />} />
             <Route path="signaler"     element={<SignalerEvenement />} />
-            <Route path="actualites"   element={<Actualites />} />
+            <Route path="actualites"
+              element={(
+                <AdminRoute
+                  allowedRoles={['SUPER_ADMIN', 'ADMIN_CONTENU', 'ADMIN_SUPPORT', 'MODERATEUR']}
+                  fallback={<ActualitesDashboard />}
+                >
+                  <Actualites />
+                </AdminRoute>
+              )}
+            />
             <Route
               path="declarations"
               element={(
@@ -119,6 +130,14 @@ function App() {
               element={(
                 <AdminRoute allowedRoles={[ 'SUPER_ADMIN' ]}>
                   <Administrateurs />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="partenaires"
+              element={(
+                <AdminRoute allowedRoles={['SUPER_ADMIN']}>
+                  <Partenaires />
                 </AdminRoute>
               )}
             />

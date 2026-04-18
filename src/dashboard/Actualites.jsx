@@ -1,12 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   FaNewspaper, FaHeartBroken, FaPlus, FaEdit, FaTrash,
-  FaCalendarAlt, FaMapMarkerAlt, FaEye, FaGlobe, FaTimes, FaCheck,
+  FaCalendarAlt, FaMapMarkerAlt, FaGlobe, FaTimes, FaCheck,
+  FaUpload, FaImage, FaArchive,
 } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
 import { listDeclarations } from '../services/declarations';
-import { listArticles, createArticle, updateArticle, deleteArticle, publishArticle } from '../services/articles';
+import {
+  listAdminArticles, createArticle, updateArticle,
+  deleteArticle, publishArticle, archiveArticle,
+} from '../services/articles';
 
 /* ─── helpers ──────────────────────────────────────────────── */
 
@@ -41,62 +45,135 @@ const declLabel = (v) => {
 };
 
 /* ─── formulaire article (admin) ───────────────────────────── */
-const EMPTY_FORM = { titre: '', contenu: '', categorie: 'Actualité', image: '' };
+const EMPTY_FORM = { titre: '', resume: '', contenu: '', categorie: 'Actualité', image: null };
+
+function ImagePicker({ existingUrl, value, onChange }) {
+  const [filePreview, setFilePreview] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => () => { if (filePreview) URL.revokeObjectURL(filePreview); }, [filePreview]);
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Fichier trop volumineux (max 5 Mo).'); return; }
+    if (filePreview) URL.revokeObjectURL(filePreview);
+    setFilePreview(URL.createObjectURL(file));
+    onChange(file);
+  };
+
+  const clear = () => {
+    if (filePreview) { URL.revokeObjectURL(filePreview); setFilePreview(null); }
+    onChange(null);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const preview = filePreview || (value instanceof File ? null : existingUrl) || null;
+
+  return (
+    <div style={{ marginBottom: 14, border: '1px solid var(--border-light)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ padding: '14px 16px', background: 'var(--pink-ultra-light)' }}>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        <button type="button" onClick={() => fileRef.current?.click()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+            background: 'white', border: '2px dashed var(--border-light)',
+            borderRadius: 8, padding: '11px 16px', cursor: 'pointer',
+            color: 'var(--text-gray)', fontSize: 13, fontWeight: 600,
+            justifyContent: 'center', transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--red-primary)'; e.currentTarget.style.color = 'var(--red-primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.color = 'var(--text-gray)'; }}>
+          <FaUpload size={13} />
+          {value instanceof File ? value.name : 'Choisir une image (JPG, PNG, WebP — max 5 Mo)'}
+        </button>
+        {value instanceof File && (
+          <p style={{ margin: '5px 0 0', fontSize: 11, color: '#2e7d32', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <FaCheck size={10} /> {value.name} — {(value.size / 1024).toFixed(0)} Ko
+          </p>
+        )}
+      </div>
+
+      {/* Aperçu */}
+      {preview ? (
+        <div style={{ position: 'relative' }}>
+          <img src={preview} alt="Aperçu"
+            style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }}
+          />
+          <button type="button" onClick={clear}
+            style={{
+              position: 'absolute', top: 6, right: 6,
+              background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%',
+              width: 26, height: 26, cursor: 'pointer', color: 'white',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <FaTimes size={11} />
+          </button>
+          {existingUrl && !filePreview && (
+            <span style={{ position: 'absolute', bottom: 6, left: 8, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: 10, padding: '2px 7px', borderRadius: 4 }}>
+              Image actuelle
+            </span>
+          )}
+        </div>
+      ) : (
+        <div style={{
+          height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--text-gray)', fontSize: 12, gap: 8, background: 'var(--pink-very-light)',
+        }}>
+          <FaImage size={18} style={{ opacity: 0.3 }} />
+          <span style={{ opacity: 0.45 }}>Aperçu de l'image ici</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ArticleForm({ initial, onSave, onCancel, saving }) {
-  const [form, setForm] = useState(initial || EMPTY_FORM);
+  const [form, setForm] = useState(
+    initial
+      ? { titre: initial.titre || '', resume: initial.resume || '', contenu: initial.contenu || '', categorie: initial.categorie || 'Actualité', image: null }
+      : { ...EMPTY_FORM }
+  );
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
   return (
     <div style={{ background: 'var(--pink-ultra-light)', border: '1px solid var(--border-light)', borderRadius: 10, padding: '18px 20px', marginBottom: 20 }}>
-      <h4 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: 'var(--red-primary)' }}>
-        {initial ? 'Modifier l\'article' : 'Nouvel article'}
+      <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--red-primary)' }}>
+        {initial ? 'Modifier l\'actualité' : 'Nouvelle actualité'}
       </h4>
-      <input
-        className="form-input"
-        placeholder="Titre de l'article *"
-        value={form.titre}
-        onChange={(e) => setForm({ ...form, titre: e.target.value })}
-        style={{ marginBottom: 10 }}
-        required
-      />
-      <select
-        className="form-input"
-        value={form.categorie}
-        onChange={(e) => setForm({ ...form, categorie: e.target.value })}
-        style={{ marginBottom: 10 }}
-      >
+
+      <input className="form-input" placeholder="Titre de l'actualité *" value={form.titre}
+        onChange={set('titre')} style={{ marginBottom: 10 }} required />
+
+      <select className="form-input" value={form.categorie} onChange={set('categorie')} style={{ marginBottom: 10 }}>
         {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
-      <input
-        className="form-input"
-        placeholder="URL image (optionnel)"
+
+      <input className="form-input" placeholder="Résumé / accroche (optionnel)" value={form.resume}
+        onChange={set('resume')} style={{ marginBottom: 10 }} />
+
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-gray)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        Image de couverture
+      </label>
+      <ImagePicker
+        existingUrl={initial?.imageUrl || initial?.image || null}
         value={form.image}
-        onChange={(e) => setForm({ ...form, image: e.target.value })}
-        style={{ marginBottom: 10 }}
+        onChange={(file) => setForm((f) => ({ ...f, image: file }))}
       />
-      <textarea
-        className="form-input"
-        placeholder="Contenu de l'article *"
-        rows={6}
-        value={form.contenu}
-        onChange={(e) => setForm({ ...form, contenu: e.target.value })}
-        style={{ resize: 'vertical', marginBottom: 14 }}
-        required
-      />
+
+      <textarea className="form-input" placeholder="Contenu de l'actualité *" rows={7}
+        value={form.contenu} onChange={set('contenu')}
+        style={{ resize: 'vertical', marginBottom: 16 }} required />
+
       <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          type="button"
-          className="btn-add"
-          style={{ padding: '10px 24px' }}
-          disabled={saving || !form.titre || !form.contenu}
-          onClick={() => onSave(form)}
-        >
+        <button type="button" className="btn-add" style={{ padding: '10px 24px' }}
+          disabled={saving || !form.titre}
+          onClick={() => onSave(form)}>
           {saving ? 'Enregistrement…' : <><FaCheck size={12} style={{ marginRight: 6 }} />Enregistrer</>}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          style={{ background: 'none', border: '1px solid var(--border-light)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontSize: 13 }}
-        >
+        <button type="button" onClick={onCancel}
+          style={{ background: 'none', border: '1px solid var(--border-light)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontSize: 13 }}>
           Annuler
         </button>
       </div>
@@ -105,46 +182,58 @@ function ArticleForm({ initial, onSave, onCancel, saving }) {
 }
 
 /* ─── carte article ────────────────────────────────────────── */
-function ArticleCard({ article, canEdit, onEdit, onDelete, onPublish }) {
+const STATUT_BADGE = {
+  PUBLIE:    { label: 'Publié',   bg: 'rgba(46,125,50,0.12)',  color: '#2e7d32' },
+  BROUILLON: { label: 'Brouillon', bg: 'rgba(245,124,0,0.12)', color: '#f57c00' },
+  ARCHIVE:   { label: 'Archivé',  bg: 'rgba(100,100,100,0.12)', color: '#666' },
+};
+
+function ArticleCard({ article, canEdit, onEdit, onDelete, onPublish, onArchive }) {
   const [expanded, setExpanded] = useState(false);
-  const isPublished = article.publie ?? article.published ?? true;
+  const statut = (article.statut || (article.publie ?? article.published ? 'PUBLIE' : 'BROUILLON')).toUpperCase();
+  const badge = STATUT_BADGE[statut] || STATUT_BADGE.BROUILLON;
+  const imageUrl = article.imageUrl || article.image || null;
+  const contenu = article.contenu || '';
+  const resume = article.resume || '';
 
   return (
     <div style={{
-      border: '1px solid rgba(0,0,0,0.07)',
-      borderRadius: 12,
-      overflow: 'hidden',
-      marginBottom: 16,
-      background: 'white',
+      border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
+      overflow: 'hidden', marginBottom: 16, background: 'white',
       boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
     }}>
-      {article.image && (
-        <img
-          src={article.image}
-          alt={article.titre}
+      {imageUrl && (
+        <img src={imageUrl} alt={article.titre}
           style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
           onError={(e) => { e.target.style.display = 'none'; }}
         />
       )}
-      <div style={{ padding: '16px 18px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ padding: '14px 18px' }}>
+        {/* En-tête badges + actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(139,28,28,0.1)', color: 'var(--red-primary)', padding: '2px 8px', borderRadius: 999 }}>
               {article.categorie || 'Actualité'}
             </span>
-            {!isPublished && (
-              <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(245,124,0,0.12)', color: '#f57c00', padding: '2px 8px', borderRadius: 999 }}>
-                Brouillon
-              </span>
+            <span style={{ fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: 999 }}>
+              {badge.label}
+            </span>
+            {article.nbVues != null && (
+              <span style={{ fontSize: 11, color: 'var(--text-gray)' }}>👁 {article.nbVues}</span>
             )}
           </div>
           {canEdit && (
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              {!isPublished && (
-                <button type="button" onClick={() => onPublish(article)}
-                  title="Publier"
-                  style={{ background: 'rgba(46,125,50,0.12)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, color: '#2e7d32', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+              {statut === 'BROUILLON' && (
+                <button type="button" onClick={() => onPublish(article)} title="Publier"
+                  style={{ background: 'rgba(46,125,50,0.1)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, color: '#2e7d32', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <FaGlobe size={10} /> Publier
+                </button>
+              )}
+              {statut === 'PUBLIE' && (
+                <button type="button" onClick={() => onArchive(article)} title="Archiver"
+                  style={{ background: 'rgba(100,100,100,0.08)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, color: '#666', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FaArchive size={10} /> Archiver
                 </button>
               )}
               <button type="button" onClick={() => onEdit(article)}
@@ -159,30 +248,32 @@ function ArticleCard({ article, canEdit, onEdit, onDelete, onPublish }) {
           )}
         </div>
 
-        <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-dark)' }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-dark)' }}>
           {article.titre}
         </h3>
 
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <FaCalendarAlt size={10} />
           {formatDate(article.datePublication || article.createdAt || article.dateCreation)}
-          {article.auteur && <> · Par <strong>{article.auteur}</strong></>}
+          {article.auteur && <> · <strong>{article.auteur}</strong></>}
         </p>
 
-        <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
-          {expanded
-            ? article.contenu
-            : `${(article.contenu || '').slice(0, 200)}${(article.contenu || '').length > 200 ? '…' : ''}`}
-        </p>
+        {resume && (
+          <p style={{ margin: '0 0 8px', fontSize: 13, color: '#555', fontStyle: 'italic', lineHeight: 1.5 }}>{resume}</p>
+        )}
 
-        {(article.contenu || '').length > 200 && (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-primary)', fontSize: 13, fontWeight: 600, padding: '6px 0', marginTop: 4 }}
-          >
-            {expanded ? 'Réduire' : 'Lire la suite →'}
-          </button>
+        {contenu && (
+          <>
+            <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.65 }}>
+              {expanded ? contenu : `${contenu.slice(0, 220)}${contenu.length > 220 ? '…' : ''}`}
+            </p>
+            {contenu.length > 220 && (
+              <button type="button" onClick={() => setExpanded((v) => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-primary)', fontSize: 13, fontWeight: 600, padding: '5px 0', marginTop: 4 }}>
+                {expanded ? 'Réduire' : 'Lire la suite →'}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -262,10 +353,10 @@ export default function Actualites() {
     setArtLoading(true);
     setArtError(null);
     try {
-      const data = await listArticles({ page: 0, size: 20, sort: 'datePublication,desc' });
+      const data = await listAdminArticles({ page: 0, size: 30, sort: 'datePublication,desc' });
       setArticles(normalizeList(data));
     } catch {
-      setArtError('Impossible de charger les articles pour le moment.');
+      setArtError('Impossible de charger les actualités pour le moment.');
       setArticles([]);
     } finally {
       setArtLoading(false);
@@ -298,46 +389,61 @@ export default function Actualites() {
     try {
       if (editTarget?.id) {
         await updateArticle(editTarget.id, form);
-        setArtMsg({ type: 'success', text: 'Article mis à jour.' });
+        setArtMsg({ type: 'success', text: 'Actualité mise à jour.' });
       } else {
         await createArticle(form);
-        setArtMsg({ type: 'success', text: 'Article créé.' });
+        setArtMsg({ type: 'success', text: 'Actualité créée.' });
       }
       setShowForm(false);
       setEditTarget(null);
       await loadArticles();
     } catch (err) {
-      setArtMsg({ type: 'error', text: err?.response?.data?.message || 'Erreur lors de la sauvegarde.' });
+      const detail = err?.response?.data?.message
+        || err?.response?.data?.error
+        || err?.response?.data
+        || err?.message
+        || 'Erreur lors de la sauvegarde.';
+      setArtMsg({ type: 'error', text: typeof detail === 'string' ? detail : JSON.stringify(detail) });
     } finally {
       setFormSaving(false);
     }
   };
 
   const handleDelete = async (article) => {
-    if (!window.confirm('Supprimer cet article ?')) return;
+    if (!window.confirm('Supprimer cette actualité ?')) return;
     try {
       await deleteArticle(article.id);
-      setArtMsg({ type: 'success', text: 'Article supprimé.' });
+      setArtMsg({ type: 'success', text: 'Actualité supprimée.' });
       await loadArticles();
     } catch {
-      setArtMsg({ type: 'error', text: 'Impossible de supprimer l\'article.' });
+      setArtMsg({ type: 'error', text: 'Impossible de supprimer l\'actualité.' });
     }
   };
 
   const handlePublish = async (article) => {
     try {
       await publishArticle(article.id);
-      setArtMsg({ type: 'success', text: 'Article publié.' });
+      setArtMsg({ type: 'success', text: 'Actualité publiée.' });
       await loadArticles();
     } catch {
-      setArtMsg({ type: 'error', text: 'Impossible de publier l\'article.' });
+      setArtMsg({ type: 'error', text: 'Impossible de publier l\'actualité.' });
+    }
+  };
+
+  const handleArchive = async (article) => {
+    try {
+      await archiveArticle(article.id);
+      setArtMsg({ type: 'success', text: 'Actualité archivée.' });
+      await loadArticles();
+    } catch {
+      setArtMsg({ type: 'error', text: 'Impossible d\'archiver l\'actualité.' });
     }
   };
 
   const handleEdit = (article) => {
     setEditTarget(article);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   const handleCancelForm = () => {
@@ -353,7 +459,7 @@ export default function Actualites() {
         {/* Onglets */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border-light)', paddingBottom: 0 }}>
           {[
-            { key: 'articles', label: 'Articles & Actualités', icon: FaNewspaper },
+            { key: 'articles', label: 'Actualités', icon: FaNewspaper },
             { key: 'deces', label: 'Décès déclarés', icon: FaHeartBroken },
           ].map(({ key, label, icon: Icon }) => (
             <button
@@ -388,7 +494,7 @@ export default function Actualites() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
                 <FaNewspaper size={15} style={{ marginRight: 8, color: 'var(--red-primary)', verticalAlign: 'middle' }} />
-                Articles & Actualités RSC
+                Actualités RSC
               </h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn-small" type="button" onClick={loadArticles} disabled={artLoading}>
@@ -401,7 +507,7 @@ export default function Actualites() {
                     style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
                     onClick={() => { setEditTarget(null); setShowForm(true); }}
                   >
-                    <FaPlus size={11} /> Nouvel article
+                    <FaPlus size={11} /> Nouvelle actualité
                   </button>
                 )}
                 {canPublish && showForm && (
@@ -439,9 +545,9 @@ export default function Actualites() {
             {!artLoading && artError && (
               <div style={{ textAlign: 'center', padding: '30px 20px' }}>
                 <FaNewspaper size={36} style={{ marginBottom: 12, opacity: 0.2 }} />
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 4 }}>Aucun article disponible</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 4 }}>Aucune actualité disponible</p>
                 <p style={{ fontSize: 13, color: 'var(--text-gray)' }}>
-                  {canPublish ? 'Créez le premier article RSC en cliquant sur "Nouvel article".' : 'Les articles publiés par l\'équipe RSC apparaîtront ici.'}
+                  {canPublish ? 'Créez la première actualité RSC en cliquant sur "Nouvelle actualité".' : 'Les actualités publiées par l\'équipe RSC apparaîtront ici.'}
                 </p>
               </div>
             )}
@@ -449,9 +555,9 @@ export default function Actualites() {
             {!artLoading && !artError && articles.length === 0 && (
               <div style={{ textAlign: 'center', padding: '30px 20px' }}>
                 <FaNewspaper size={36} style={{ marginBottom: 12, opacity: 0.2 }} />
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 4 }}>Aucun article pour l'instant</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 4 }}>Aucune actualité pour l'instant</p>
                 <p style={{ fontSize: 13, color: 'var(--text-gray)' }}>
-                  {canPublish ? 'Créez le premier article RSC en cliquant sur "Nouvel article".' : 'Les articles publiés par l\'équipe RSC apparaîtront ici.'}
+                  {canPublish ? 'Créez la première actualité RSC en cliquant sur "Nouvelle actualité".' : 'Les actualités publiées par l\'équipe RSC apparaîtront ici.'}
                 </p>
               </div>
             )}
@@ -464,6 +570,7 @@ export default function Actualites() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onPublish={handlePublish}
+                onArchive={handleArchive}
               />
             ))}
           </>

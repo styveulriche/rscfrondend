@@ -3,6 +3,8 @@ import { useRealtimeResource } from './useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import {
   listUsers,
+  listByStatus,
+  searchUsers,
   usersStats,
   getEligibility,
   getProbationDays,
@@ -110,11 +112,32 @@ const summarizeStats = (rows, statsPayload) => {
   }, { ...DEFAULT_SUMMARY });
 };
 
-export function useAdminUsersBoard({ page, size = 8, sort }) {
-  const listFetcher = useCallback(() => listUsers({ page, size, sort }), [page, size, sort]);
+export function useAdminUsersBoard({ page, size = 20, sort, search = '', statut = '', eligibilite = '' }) {
+  const listFetcher = useCallback(async () => {
+    // Recherche texte → endpoint dédié (tous les utilisateurs, pas seulement la page)
+    if (search.trim()) {
+      const params = { query: search.trim(), page, size };
+      if (sort) params.sort = sort;
+      if (statut) params.statut = statut;
+      return searchUsers(params);
+    }
+    // Filtre statut compte uniquement
+    if (statut && !eligibilite) {
+      const res = await listByStatus(statut);
+      return res; // normalisé comme tableau → totalPages=1
+    }
+    // Liste paginée avec paramètres serveur
+    const params = { page, size, sort };
+    if (statut) params.statut = statut;
+    if (eligibilite) params.statutEligibilite = eligibilite;
+    return listUsers(params);
+  }, [page, size, sort, search, statut, eligibilite]);
+
+  // La clé inclut tous les filtres → refetch automatique à chaque changement
+  const cacheKey = `admin-users-${page}-${size}-${sort}-${search}-${statut}-${eligibilite}`;
 
   const listResource = useRealtimeResource(
-    `admin-users-${page}-${size}-${sort}`,
+    cacheKey,
     listFetcher,
     {
       enabled: true,

@@ -252,14 +252,16 @@ function Profile() {
                 fontSize: 24, fontWeight: 700, color: 'white',
                 cursor: 'pointer', overflow: 'hidden',
                 border: '3px solid var(--pink-light)', flexShrink: 0,
+                position: 'relative',
               }}
             >
-              {photoPreview ? (
+              {initials}
+              {photoPreview && (
                 <img src={photoPreview} alt="Photo de profil"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
-              ) : initials}
+              )}
             </div>
             {/* Bouton caméra */}
             <button type="button" onClick={() => photoInputRef.current?.click()}
@@ -397,13 +399,15 @@ function Profile() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 26, fontWeight: 700, color: 'white', overflow: 'hidden',
                 border: '3px solid var(--pink-light)', flexShrink: 0,
+                position: 'relative',
               }}>
-                {photoPreview ? (
+                {initials}
+                {photoPreview && (
                   <img src={photoPreview} alt="Aperçu"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
-                ) : initials}
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{

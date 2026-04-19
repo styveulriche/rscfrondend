@@ -468,11 +468,15 @@ function AdminUsers() {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontSize: 13, fontWeight: 700, color: 'white', overflow: 'hidden',
                               border: isSelected ? '2px solid var(--red-primary)' : '2px solid transparent',
+                              position: 'relative',
                             }}>
-                              {rowPhoto
-                                ? <img src={rowPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                                : `${(row.fullName || '?')[0]}`.toUpperCase()
-                              }
+                              {`${(row.fullName || '?')[0]}`.toUpperCase()}
+                              {rowPhoto && (
+                                <img src={rowPhoto} alt=""
+                                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              )}
                             </div>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{row.fullName}</div>
@@ -535,15 +539,18 @@ function AdminUsers() {
                     fontSize: 22, fontWeight: 700, color: 'white', overflow: 'hidden',
                     border: '2px solid rgba(139,28,28,0.6)',
                     boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                    position: 'relative',
                   }}>
                     {fullUserLoading
                       ? <FaUser size={24} color="rgba(255,255,255,0.4)" />
-                      : profilePhotoUrl
-                        ? <img src={profilePhotoUrl} alt="Photo de profil"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => { e.target.style.display = 'none'; }} />
-                        : selectedInitials
+                      : selectedInitials
                     }
+                    {!fullUserLoading && profilePhotoUrl && (
+                      <img src={profilePhotoUrl} alt="Photo de profil"
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    )}
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.95)' }}>{selectedUser.fullName}</p>

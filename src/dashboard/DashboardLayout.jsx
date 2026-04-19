@@ -159,11 +159,14 @@ function DashboardLayout() {
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`}>
         {/* Avatar + nom */}
         <div className="sidebar-profile">
-          <div className="sidebar-avatar">
-            {avatar
-              ? <img src={avatar} alt="profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <FaUserCircle size={46} color="rgba(255,255,255,0.7)" />
-            }
+          <div className="sidebar-avatar" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FaUserCircle size={46} color="rgba(255,255,255,0.7)" />
+            {avatar && (
+              <img src={avatar} alt="profil"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            )}
           </div>
           <p className="sidebar-username">{displayName}</p>
         </div>
@@ -282,11 +285,14 @@ function DashboardLayout() {
           </Link>
           <div className="header-user">
             <span className="header-username">{displayName}</span>
-            <div className="user-avatar">
-              {avatar
-                ? <img src={avatar} alt="profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                : <FaUserCircle size={28} color="white" />
-              }
+            <div className="user-avatar" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FaUserCircle size={28} color="white" />
+              {avatar && (
+                <img src={avatar} alt="profil"
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              )}
             </div>
           </div>
         </header>

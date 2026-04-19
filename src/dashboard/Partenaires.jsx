@@ -17,6 +17,20 @@ const API_ORIGIN = (() => {
   try { return new URL(API_BASE).origin; } catch { return ''; }
 })();
 
+/* Extrait l'URL du logo depuis n'importe quel champ de l'objet partenaire */
+const IMG_EXT = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i;
+
+const extractLogoRaw = (p) => {
+  if (!p) return null;
+  // champs connus par ordre de priorité
+  const known = p.logoUrl ?? p.logo ?? p.logoPath ?? p.imageUrl ?? p.image ?? p.url ?? p.logoUri ?? p.fileUrl ?? p.filePath;
+  if (known && typeof known === 'string') return known;
+  // cherche dans tous les champs string un chemin d'image
+  return Object.values(p).find(
+    (v) => typeof v === 'string' && v.length > 4 && (IMG_EXT.test(v) || /\/(uploads?|images?|files?|media|logos?)\//i.test(v))
+  ) || null;
+};
+
 /* Génère toutes les URL candidates pour un logo */
 const logoUrlCandidates = (raw) => {
   if (!raw) return [];
@@ -24,21 +38,18 @@ const logoUrlCandidates = (raw) => {
   if (/^https?:\/\//.test(raw)) return [raw];
   const clean = raw.startsWith('/') ? raw : `/${raw}`;
   return [
-    `${API_ORIGIN}${clean}`,               // https://host/uploads/xxx
-    `${API_BASE.replace(/\/api\/v1$/, '')}${clean}`, // sans /api/v1
-    `${API_BASE}${clean}`,                 // https://host/api/v1/uploads/xxx
-  ].filter((v, i, a) => a.indexOf(v) === i); // déduplique
+    `${API_ORIGIN}${clean}`,
+    `${API_BASE}${clean}`,
+    `${API_BASE.replace(/\/api\/v1$/, '')}${clean}`,
+  ].filter((v, i, a) => a.indexOf(v) === i);
 };
 
 /* Composant image avec fallback automatique entre candidats */
 function LogoImg({ raw, alt, style, fallback }) {
   const candidates = logoUrlCandidates(raw);
   const [idx, setIdx] = useState(0);
-
   useEffect(() => { setIdx(0); }, [raw]);
-
   if (!candidates.length || idx >= candidates.length) return fallback || null;
-
   return (
     <img
       src={candidates[idx]}
@@ -57,7 +68,7 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
     nom: initial?.nom || '',
     description: initial?.description || '',
     logo: null,
-    logoPreview: initial?.logoUrl || initial?.logo || initial?.logoPath || null,
+    logoPreview: extractLogoRaw(initial) || null,
   });
 
   const handleFile = (e) => {
@@ -308,9 +319,9 @@ function Partenaires() {
                 justifyContent: 'center',
                 borderBottom: '1px solid var(--border-light, #f0f0f0)',
               }}>
-                {(p.logoUrl || p.logo || p.logoPath) ? (
+                {extractLogoRaw(p) ? (
                   <LogoImg
-                    raw={p.logoUrl || p.logo || p.logoPath}
+                    raw={extractLogoRaw(p)}
                     alt={p.nom}
                     style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
                     fallback={<FaHandshake size={36} color="var(--pink-card)" />}

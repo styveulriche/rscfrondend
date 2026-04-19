@@ -135,6 +135,7 @@ function Partenaires() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [actionStatus, setActionStatus] = useState(null);
+  const [logoCache, setLogoCache] = useState({}); // { [id]: { blobUrl, ts } }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,14 +156,30 @@ function Partenaires() {
     setSaving(true);
     setActionStatus(null);
     try {
+      let saved;
       if (modal?.mode === 'edit' && modal.data?.id) {
-        await updatePartenaire(modal.data.id, { nom, description, logo });
+        saved = await updatePartenaire(modal.data.id, { nom, description, logo });
         setActionStatus({ type: 'success', message: 'Partenaire mis à jour.' });
       } else {
-        await createPartenaire({ nom, description, logo });
+        saved = await createPartenaire({ nom, description, logo });
         setActionStatus({ type: 'success', message: 'Partenaire créé.' });
       }
       setModal(null);
+
+      if (logo && saved?.id) {
+        const ts = Date.now();
+        const blobUrl = URL.createObjectURL(logo);
+        const rawFromServer = saved?.logoUrl || saved?.logo;
+        const serverUrl = buildLogoUrl(rawFromServer);
+        setLogoCache((prev) => ({
+          ...prev,
+          [saved.id]: {
+            blobUrl,
+            serverUrl: serverUrl ? `${serverUrl}?v=${ts}` : null,
+          },
+        }));
+      }
+
       await load();
     } catch (err) {
       setActionStatus({ type: 'error', message: err?.response?.data?.message || 'Opération impossible.' });
@@ -242,7 +259,13 @@ function Partenaires() {
 
         {/* Grille de cartes */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-          {partenaires.map((p) => (
+          {partenaires.map((p) => {
+            const cached = logoCache[p.id];
+            const rawServerUrl = buildLogoUrl(p.logoUrl || p.logo);
+            const logoSrc = cached?.blobUrl
+              || cached?.serverUrl
+              || (rawServerUrl || null);
+            return (
             <div
               key={p.id}
               style={{
@@ -263,16 +286,20 @@ function Partenaires() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderBottom: '1px solid var(--border-light, #f0f0f0)',
+                position: 'relative',
               }}>
-                {buildLogoUrl(p.logoUrl || p.logo) ? (
+                <FaHandshake size={36} color="var(--pink-card)" />
+                {logoSrc && (
                   <img
-                    src={buildLogoUrl(p.logoUrl || p.logo)}
+                    src={logoSrc}
                     alt={p.nom}
-                    style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
-                    onError={(e) => { e.target.replaceWith(Object.assign(document.createElement('div'), { innerHTML: '🤝', style: 'font-size:40px' })); }}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      width: '100%', height: '100%',
+                      objectFit: 'contain', padding: 10,
+                    }}
+                    onError={(e) => { e.target.style.display = 'none'; }}
                   />
-                ) : (
-                  <FaHandshake size={36} color="var(--pink-card)" />
                 )}
               </div>
 
@@ -321,7 +348,8 @@ function Partenaires() {
                 </button>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 

@@ -76,6 +76,7 @@ const EligibilityBadge = ({ value }) => {
 function Profile() {
   const { user, updateUser } = useAuth();
   const photoInputRef = useRef(null);
+  const savedPhotoUrlRef = useRef(undefined); // contrôle le useEffect après une sauvegarde
 
   /* ── Formulaire texte ───────────────────────────────────────── */
   const [form, setForm] = useState({
@@ -139,10 +140,18 @@ function Profile() {
       dateNaissance:  user.dateNaissance ? user.dateNaissance.split('T')[0] : '',
       sexe:           user.sexe || '',
     });
-    const rawPhoto = user.photoProfile || user.photo || user.avatar || null;
-    // Debug : affiche la valeur brute retournée par l'API
-    if (rawPhoto) console.debug('[Profile] photoProfile brut :', rawPhoto);
-    setPhotoPreview(buildMediaUrl(rawPhoto));
+
+    if (savedPhotoUrlRef.current !== undefined) {
+      // Après une sauvegarde : utiliser l'URL calculée lors du submit
+      const url = savedPhotoUrlRef.current;
+      savedPhotoUrlRef.current = undefined;
+      setPhotoPreview(url);
+    } else {
+      const rawPhoto = user.photoProfile || user.photo || user.avatar || null;
+      if (rawPhoto) console.debug('[Profile] photoProfile brut :', rawPhoto);
+      setPhotoPreview(buildMediaUrl(rawPhoto));
+    }
+
     setPhotoFile(null);
     setPhotoChanged(false);
   }, [user]);
@@ -199,7 +208,7 @@ function Profile() {
     setSaving(true);
     setStatus(null);
     try {
-      await updateProfil(user.id, {
+      const updatedResponse = await updateProfil(user.id, {
         nom:            form.nom            || null,
         prenom:         form.prenom         || null,
         email:          form.email          || null,
@@ -213,9 +222,24 @@ function Profile() {
 
       /* Refetch du profil complet pour récupérer la vraie URL de la photo */
       const fresh = await getProfile(user.id);
-      console.debug('[Profile] profil frais après update :', fresh?.photoProfile, fresh?.photo, fresh?.avatar);
-      updateUser(fresh);
 
+      if (photoChanged) {
+        const rawFromServer =
+          fresh?.photoProfile || fresh?.photo || fresh?.avatar ||
+          updatedResponse?.photoProfile || updatedResponse?.photo || updatedResponse?.avatar;
+        const serverUrl = buildMediaUrl(rawFromServer);
+        const ts = Date.now();
+        if (serverUrl) {
+          const cachedUrl = `${serverUrl}?v=${ts}`;
+          fresh.photoProfile = cachedUrl;     // DashboardLayout (sidebar/header) lira cette valeur
+          savedPhotoUrlRef.current = cachedUrl; // Profile useEffect utilisera cette valeur
+        } else {
+          // Le serveur n'a pas renvoyé d'URL — garder le blob URL comme fallback pour cette session
+          savedPhotoUrlRef.current = photoPreview;
+        }
+      }
+
+      updateUser(fresh);
       setPhotoChanged(false);
       setPhotoFile(null);
       setStatus({ type: 'success', message: 'Profil mis à jour.' });

@@ -10,6 +10,17 @@ import {
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
+const API_ORIGIN = (() => {
+  const base = process.env.REACT_APP_API_BASE_URL?.trim() || 'http://localhost:8080/api/v1';
+  try { return new URL(base).origin; } catch { return ''; }
+})();
+
+const buildLogoUrl = (path) => {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const DEFAULT_FORM = { nom: '', description: '', logo: null, logoPreview: null };
 
 function PartenaireModal({ initial, onSave, onClose, saving }) {
@@ -18,7 +29,7 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
     nom: initial?.nom || '',
     description: initial?.description || '',
     logo: null,
-    logoPreview: initial?.logoUrl || null,
+    logoPreview: buildLogoUrl(initial?.logoUrl || initial?.logo) || null,
   });
 
   const handleFile = (e) => {
@@ -262,9 +273,9 @@ function Partenaires() {
                 justifyContent: 'center',
                 borderBottom: '1px solid var(--border-light, #f0f0f0)',
               }}>
-                {p.logoUrl ? (
+                {buildLogoUrl(p.logoUrl || p.logo) ? (
                   <img
-                    src={p.logoUrl}
+                    src={buildLogoUrl(p.logoUrl || p.logo)}
                     alt={p.nom}
                     style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
                     onError={(e) => { e.target.replaceWith(Object.assign(document.createElement('div'), { innerHTML: '🤝', style: 'font-size:40px' })); }}

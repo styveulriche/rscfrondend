@@ -10,16 +10,7 @@ import {
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
-const API_ORIGIN = (() => {
-  const base = process.env.REACT_APP_API_BASE_URL?.trim() || 'http://localhost:8080/api/v1';
-  try { return new URL(base).origin; } catch { return ''; }
-})();
-
-const buildLogoUrl = (path) => {
-  if (!path) return null;
-  if (/^https?:\/\//.test(path)) return path;
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { buildMediaUrl as buildLogoUrl } from '../utils/mediaUrl';
 
 const DEFAULT_FORM = { nom: '', description: '', logo: null, logoPreview: null };
 

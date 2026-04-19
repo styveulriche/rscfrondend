@@ -12,25 +12,7 @@ import {
 import { getStatutsDiaspora } from '../services/public';
 import { StatsRow } from './Statistics';
 
-/**
- * Construit une URL absolue à partir d'un chemin retourné par l'API.
- * - URL déjà absolue (http/https) → retournée telle quelle
- * - Blob / data URL (prévisualisation locale) → retournée telle quelle
- * - Chemin relatif (/uploads/…) → préfixé avec l'origine de l'API
- */
-const API_ORIGIN = (() => {
-  const full = process.env.REACT_APP_API_BASE_URL?.trim()
-    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-  // On veut juste http://host:port, sans le path /api/v1
-  try { return new URL(full).origin; } catch { return ''; }
-})();
-
-const buildMediaUrl = (path) => {
-  if (!path) return null;
-  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
-  // Chemin relatif → préfixer l'origine de l'API
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 /**
  * Normalise la réponse de /qrcode/base64 en une chaîne base64 pure.

@@ -12,11 +12,7 @@ import { getUnreadCount } from '../services/notifications';
 import { listMyTickets } from '../services/messages';
 import { isProfileIncomplete } from '../components/PrivateRoute';
 
-const MEDIA_ORIGIN = (() => {
-  const full = process.env.REACT_APP_API_BASE_URL?.trim()
-    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-  try { return new URL(full).origin; } catch { return ''; }
-})();
+import { buildMediaUrl as buildMediaUrlUtil } from '../utils/mediaUrl';
 
 const normalizeList = (p) => {
   if (!p) return [];
@@ -93,11 +89,7 @@ function DashboardLayout() {
     || user?.email
     || 'Utilisateur';
   const rawAvatar = user?.photoProfile || user?.avatar || null;
-  const avatar = rawAvatar
-    ? (/^(https?:\/\/|blob:|data:)/.test(rawAvatar)
-        ? rawAvatar
-        : `${MEDIA_ORIGIN}${rawAvatar.startsWith('/') ? '' : '/'}${rawAvatar}`)
-    : null;
+  const avatar = buildMediaUrlUtil(rawAvatar);
 
   const handleLogout = () => {
     logout();

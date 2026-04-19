@@ -163,7 +163,14 @@ function Partenaires() {
       setModal(null);
       await load();
     } catch (err) {
-      setActionStatus({ type: 'error', message: err?.response?.data?.message || 'Opération impossible.' });
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message
+        || err?.response?.data?.error
+        || (typeof err?.response?.data === 'string' ? err.response.data : null)
+        || (err?.message?.toLowerCase().includes('network') ? 'Erreur réseau — CORS ou backend inaccessible.' : null)
+        || err?.message
+        || 'Opération impossible.';
+      setActionStatus({ type: 'error', message: status ? `[${status}] ${msg}` : msg });
     } finally {
       setSaving(false);
     }

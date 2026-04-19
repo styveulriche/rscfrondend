@@ -10,17 +10,44 @@ import {
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
+const API_BASE = process.env.REACT_APP_API_BASE_URL?.trim()
+  || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
+
 const API_ORIGIN = (() => {
-  const full = process.env.REACT_APP_API_BASE_URL?.trim()
-    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-  try { return new URL(full).origin; } catch { return ''; }
+  try { return new URL(API_BASE).origin; } catch { return ''; }
 })();
 
-const buildLogoUrl = (path) => {
-  if (!path) return null;
-  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+/* Génère toutes les URL candidates pour un logo */
+const logoUrlCandidates = (raw) => {
+  if (!raw) return [];
+  if (/^(blob:|data:)/.test(raw)) return [raw];
+  if (/^https?:\/\//.test(raw)) return [raw];
+  const clean = raw.startsWith('/') ? raw : `/${raw}`;
+  return [
+    `${API_ORIGIN}${clean}`,               // https://host/uploads/xxx
+    `${API_BASE.replace(/\/api\/v1$/, '')}${clean}`, // sans /api/v1
+    `${API_BASE}${clean}`,                 // https://host/api/v1/uploads/xxx
+  ].filter((v, i, a) => a.indexOf(v) === i); // déduplique
 };
+
+/* Composant image avec fallback automatique entre candidats */
+function LogoImg({ raw, alt, style, fallback }) {
+  const candidates = logoUrlCandidates(raw);
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => { setIdx(0); }, [raw]);
+
+  if (!candidates.length || idx >= candidates.length) return fallback || null;
+
+  return (
+    <img
+      src={candidates[idx]}
+      alt={alt}
+      style={style}
+      onError={() => setIdx((i) => i + 1)}
+    />
+  );
+}
 
 const DEFAULT_FORM = { nom: '', description: '', logo: null, logoPreview: null };
 
@@ -30,7 +57,7 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
     nom: initial?.nom || '',
     description: initial?.description || '',
     logo: null,
-    logoPreview: buildLogoUrl(initial?.logoUrl || initial?.logo || null),
+    logoPreview: initial?.logoUrl || initial?.logo || initial?.logoPath || null,
   });
 
   const handleFile = (e) => {
@@ -98,11 +125,10 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
             <p className="settings-label">Logo</p>
             {form.logoPreview && (
               <div style={{ marginBottom: 8 }}>
-                <img
-                  src={form.logoPreview}
+                <LogoImg
+                  raw={form.logoPreview}
                   alt="Aperçu logo"
                   style={{ height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid #eee' }}
-                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
               </div>
             )}
@@ -151,7 +177,8 @@ function Partenaires() {
     setError(null);
     try {
       const data = await listPartenaires();
-      setPartenaires(Array.isArray(data) ? data : (data?.content || []));
+      const list = Array.isArray(data) ? data : (data?.content || []);
+      setPartenaires(list);
     } catch (err) {
       setError(err?.response?.data?.message || 'Impossible de charger les partenaires.');
     } finally {
@@ -281,12 +308,12 @@ function Partenaires() {
                 justifyContent: 'center',
                 borderBottom: '1px solid var(--border-light, #f0f0f0)',
               }}>
-                {buildLogoUrl(p.logoUrl || p.logo) ? (
-                  <img
-                    src={buildLogoUrl(p.logoUrl || p.logo)}
+                {(p.logoUrl || p.logo || p.logoPath) ? (
+                  <LogoImg
+                    raw={p.logoUrl || p.logo || p.logoPath}
                     alt={p.nom}
                     style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
-                    onError={(e) => { e.target.replaceWith(Object.assign(document.createElement('div'), { innerHTML: '🤝', style: 'font-size:40px' })); }}
+                    fallback={<FaHandshake size={36} color="var(--pink-card)" />}
                   />
                 ) : (
                   <FaHandshake size={36} color="var(--pink-card)" />

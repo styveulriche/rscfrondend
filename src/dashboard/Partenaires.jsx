@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
   FaHandshake, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff,
   FaImage, FaSyncAlt, FaTimes, FaSave,
@@ -126,6 +127,20 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
 /* ── Page principale ─────────────────────────────────────────── */
 
 function Partenaires() {
+  const { roles } = useAuth();
+
+  useEffect(() => {
+    // DEBUG — à retirer après vérification
+    const token = localStorage.getItem('rsc_token');
+    console.log('[Partenaires] rôles frontend:', roles);
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('[Partenaires] JWT payload:', payload);
+      } catch { /* ignore */ }
+    }
+  }, [roles]);
+
   const [partenaires, setPartenaires] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

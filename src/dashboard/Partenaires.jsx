@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
 import {
   FaHandshake, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff,
   FaImage, FaSyncAlt, FaTimes, FaSave,
@@ -11,6 +10,18 @@ import {
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
+const API_ORIGIN = (() => {
+  const full = process.env.REACT_APP_API_BASE_URL?.trim()
+    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
+  try { return new URL(full).origin; } catch { return ''; }
+})();
+
+const buildLogoUrl = (path) => {
+  if (!path) return null;
+  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
+  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const DEFAULT_FORM = { nom: '', description: '', logo: null, logoPreview: null };
 
 function PartenaireModal({ initial, onSave, onClose, saving }) {
@@ -19,7 +30,7 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
     nom: initial?.nom || '',
     description: initial?.description || '',
     logo: null,
-    logoPreview: initial?.logoUrl || null,
+    logoPreview: buildLogoUrl(initial?.logoUrl || initial?.logo || null),
   });
 
   const handleFile = (e) => {
@@ -127,20 +138,6 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
 /* ── Page principale ─────────────────────────────────────────── */
 
 function Partenaires() {
-  const { roles } = useAuth();
-
-  useEffect(() => {
-    // DEBUG — à retirer après vérification
-    const token = localStorage.getItem('rsc_token');
-    console.log('[Partenaires] rôles frontend:', roles);
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('[Partenaires] JWT payload:', payload);
-      } catch { /* ignore */ }
-    }
-  }, [roles]);
-
   const [partenaires, setPartenaires] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -284,9 +281,9 @@ function Partenaires() {
                 justifyContent: 'center',
                 borderBottom: '1px solid var(--border-light, #f0f0f0)',
               }}>
-                {p.logoUrl ? (
+                {buildLogoUrl(p.logoUrl || p.logo) ? (
                   <img
-                    src={p.logoUrl}
+                    src={buildLogoUrl(p.logoUrl || p.logo)}
                     alt={p.nom}
                     style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
                     onError={(e) => { e.target.replaceWith(Object.assign(document.createElement('div'), { innerHTML: '🤝', style: 'font-size:40px' })); }}

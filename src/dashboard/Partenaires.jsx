@@ -10,56 +10,6 @@ import {
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
-const API_BASE = process.env.REACT_APP_API_BASE_URL?.trim()
-  || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-
-const API_ORIGIN = (() => {
-  try { return new URL(API_BASE).origin; } catch { return ''; }
-})();
-
-/* Extrait l'URL du logo depuis n'importe quel champ de l'objet partenaire */
-const IMG_EXT = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i;
-
-const extractLogoRaw = (p) => {
-  if (!p) return null;
-  // champs connus par ordre de priorité
-  const known = p.logoUrl ?? p.logo ?? p.logoPath ?? p.imageUrl ?? p.image ?? p.url ?? p.logoUri ?? p.fileUrl ?? p.filePath;
-  if (known && typeof known === 'string') return known;
-  // cherche dans tous les champs string un chemin d'image
-  return Object.values(p).find(
-    (v) => typeof v === 'string' && v.length > 4 && (IMG_EXT.test(v) || /\/(uploads?|images?|files?|media|logos?)\//i.test(v))
-  ) || null;
-};
-
-/* Génère toutes les URL candidates pour un logo */
-const logoUrlCandidates = (raw) => {
-  if (!raw) return [];
-  if (/^(blob:|data:)/.test(raw)) return [raw];
-  if (/^https?:\/\//.test(raw)) return [raw];
-  const clean = raw.startsWith('/') ? raw : `/${raw}`;
-  return [
-    `${API_ORIGIN}${clean}`,
-    `${API_BASE}${clean}`,
-    `${API_BASE.replace(/\/api\/v1$/, '')}${clean}`,
-  ].filter((v, i, a) => a.indexOf(v) === i);
-};
-
-/* Composant image avec fallback automatique entre candidats */
-function LogoImg({ raw, alt, style, fallback }) {
-  const candidates = logoUrlCandidates(raw);
-  const [idx, setIdx] = useState(0);
-  useEffect(() => { setIdx(0); }, [raw]);
-  if (!candidates.length || idx >= candidates.length) return fallback || null;
-  return (
-    <img
-      src={candidates[idx]}
-      alt={alt}
-      style={style}
-      onError={() => setIdx((i) => i + 1)}
-    />
-  );
-}
-
 const DEFAULT_FORM = { nom: '', description: '', logo: null, logoPreview: null };
 
 function PartenaireModal({ initial, onSave, onClose, saving }) {
@@ -68,7 +18,7 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
     nom: initial?.nom || '',
     description: initial?.description || '',
     logo: null,
-    logoPreview: extractLogoRaw(initial) || null,
+    logoPreview: initial?.logoUrl || null,
   });
 
   const handleFile = (e) => {
@@ -136,10 +86,11 @@ function PartenaireModal({ initial, onSave, onClose, saving }) {
             <p className="settings-label">Logo</p>
             {form.logoPreview && (
               <div style={{ marginBottom: 8 }}>
-                <LogoImg
-                  raw={form.logoPreview}
+                <img
+                  src={form.logoPreview}
                   alt="Aperçu logo"
                   style={{ height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid #eee' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
               </div>
             )}
@@ -188,8 +139,7 @@ function Partenaires() {
     setError(null);
     try {
       const data = await listPartenaires();
-      const list = Array.isArray(data) ? data : (data?.content || []);
-      setPartenaires(list);
+      setPartenaires(Array.isArray(data) ? data : (data?.content || []));
     } catch (err) {
       setError(err?.response?.data?.message || 'Impossible de charger les partenaires.');
     } finally {
@@ -213,14 +163,7 @@ function Partenaires() {
       setModal(null);
       await load();
     } catch (err) {
-      const status = err?.response?.status;
-      const msg = err?.response?.data?.message
-        || err?.response?.data?.error
-        || (typeof err?.response?.data === 'string' ? err.response.data : null)
-        || (err?.message?.toLowerCase().includes('network') ? 'Erreur réseau — CORS ou backend inaccessible.' : null)
-        || err?.message
-        || 'Opération impossible.';
-      setActionStatus({ type: 'error', message: status ? `[${status}] ${msg}` : msg });
+      setActionStatus({ type: 'error', message: err?.response?.data?.message || 'Opération impossible.' });
     } finally {
       setSaving(false);
     }
@@ -319,12 +262,12 @@ function Partenaires() {
                 justifyContent: 'center',
                 borderBottom: '1px solid var(--border-light, #f0f0f0)',
               }}>
-                {extractLogoRaw(p) ? (
-                  <LogoImg
-                    raw={extractLogoRaw(p)}
+                {p.logoUrl ? (
+                  <img
+                    src={p.logoUrl}
                     alt={p.nom}
                     style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
-                    fallback={<FaHandshake size={36} color="var(--pink-card)" />}
+                    onError={(e) => { e.target.replaceWith(Object.assign(document.createElement('div'), { innerHTML: '🤝', style: 'font-size:40px' })); }}
                   />
                 ) : (
                   <FaHandshake size={36} color="var(--pink-card)" />

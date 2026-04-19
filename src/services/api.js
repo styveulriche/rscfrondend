@@ -36,11 +36,6 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // Pour FormData, laisser axios définir Content-Type avec le bon boundary
-  if (config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
-  }
-
   if (isPublicRequest(config)) {
     if (config.headers?.Authorization) delete config.headers.Authorization;
     return config;

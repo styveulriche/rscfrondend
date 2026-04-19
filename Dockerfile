@@ -7,7 +7,8 @@ RUN npm ci
 
 COPY . .
 
-# .env.production fournit REACT_APP_API_BASE_URL=https://rsc-production.up.railway.app/api/v1
+# URL relative → nginx proxie vers le backend (pas de CORS)
+ENV REACT_APP_API_BASE_URL=/api/v1
 ENV CI=false
 
 RUN npm run build

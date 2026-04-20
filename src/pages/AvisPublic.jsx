@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { FaFilePdf, FaCalendarAlt, FaMapMarkerAlt, FaGlobe } from 'react-icons/fa';
 import { getAvisPublic, getAvisPublicPdf } from '../services/avisDecès';
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 const formatDate = (v) => {
   if (!v) return '—';
@@ -105,7 +106,7 @@ export default function AvisPublic() {
             </h1>
             {avis.photoUrl && (
               <img
-                src={avis.photoUrl}
+                src={buildMediaUrl(avis.photoUrl)}
                 alt={`${avis.prenomDefunt} ${avis.nomDefunt}`}
                 style={{
                   width: 100, height: 100, borderRadius: '50%',

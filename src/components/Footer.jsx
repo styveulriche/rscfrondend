@@ -5,18 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import translations from '../i18n/translations';
 import { getSocialLinks } from '../services/public';
 import { listPartenairesPublic } from '../services/partenaires';
-
-const API_ORIGIN = (() => {
-  const full = process.env.REACT_APP_API_BASE_URL?.trim()
-    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-  try { return new URL(full).origin; } catch { return ''; }
-})();
-
-const buildLogoUrl = (path) => {
-  if (!path) return null;
-  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 const PLATFORM_META = {
   facebook:  { icon: FaFacebook,  color: '#1877F2', label: 'Facebook'  },
@@ -141,7 +130,7 @@ function Footer() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 20px', alignItems: 'center' }}>
             {partenaires.map((p) => {
-              const logoUrl = buildLogoUrl(p.logoUrl || p.logo || p.logoPath);
+              const logoUrl = buildMediaUrl(p.logoUrl || p.logo || p.logoPath);
               const name = p.nom || p.name || 'Partenaire';
               return (
                 <div key={p.id || name}

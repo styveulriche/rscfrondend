@@ -14,20 +14,7 @@ import { usersEvolution, listNewUsers, getUser } from '../services/users';
 import { listByUser as listAyantsByUser } from '../services/ayantsDroit';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
-
-/* ── Helpers ─────────────────────────────────────────────────── */
-
-const API_ORIGIN = (() => {
-  const full = process.env.REACT_APP_API_BASE_URL?.trim()
-    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-  try { return new URL(full).origin; } catch { return ''; }
-})();
-
-const buildMediaUrl = (path) => {
-  if (!path) return null;
-  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 const formatDate = (value) => {
   if (!value) return '—';

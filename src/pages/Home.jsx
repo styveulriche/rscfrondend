@@ -14,18 +14,6 @@ import { listPartenairesPublic } from '../services/partenaires';
 import { listDerniersArticles } from '../services/articles';
 import { buildMediaUrl } from '../utils/mediaUrl';
 
-const API_ORIGIN = (() => {
-  const full = process.env.REACT_APP_API_BASE_URL?.trim()
-    || `http://localhost:${process.env.REACT_APP_API_PORT || '8080'}/api/v1`;
-  try { return new URL(full).origin; } catch { return ''; }
-})();
-
-const buildLogoUrl = (path) => {
-  if (!path) return null;
-  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path;
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
-};
-
 const formatDate = (v) => {
   if (!v) return '';
   const d = new Date(v);
@@ -228,7 +216,7 @@ function Home() {
             {/* Dupliquer la liste pour un défilement sans fin */}
             <div className="partenaires-track">
               {[...partenaires, ...partenaires].map((p, i) => {
-                const logoUrl = buildLogoUrl(p.logoUrl || p.logo || p.logoPath);
+                const logoUrl = buildMediaUrl(p.logoUrl || p.logo || p.logoPath);
                 return (
                   <div key={i} className="partenaire-item">
                     {logoUrl

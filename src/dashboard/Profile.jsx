@@ -76,7 +76,6 @@ const EligibilityBadge = ({ value }) => {
 function Profile() {
   const { user, updateUser } = useAuth();
   const photoInputRef = useRef(null);
-  const savedPhotoUrlRef = useRef(undefined); // contrôle le useEffect après une sauvegarde
 
   /* ── Formulaire texte ───────────────────────────────────────── */
   const [form, setForm] = useState({
@@ -140,26 +139,10 @@ function Profile() {
       dateNaissance:  user.dateNaissance ? user.dateNaissance.split('T')[0] : '',
       sexe:           user.sexe || '',
     });
-
-    const savedUrl = savedPhotoUrlRef.current;
-    if (savedUrl !== undefined) {
-      savedPhotoUrlRef.current = undefined;
-      setPhotoPreview(savedUrl);
-    } else {
-      const rawPhoto = user.photoProfile || user.photo || user.avatar || null;
-      setPhotoPreview(buildMediaUrl(rawPhoto));
-    }
-
+    const rawPhoto = user.photoProfile || user.photo || user.avatar || null;
+    setPhotoPreview(buildMediaUrl(rawPhoto));
     setPhotoFile(null);
     setPhotoChanged(false);
-
-    return () => {
-      // StrictMode invoque l'effect deux fois (effect → cleanup → effect).
-      // On restaure la valeur du ref pour que la 2e invocation l'utilise aussi.
-      if (savedUrl !== undefined) {
-        savedPhotoUrlRef.current = savedUrl;
-      }
-    };
   }, [user]);
 
   /* Chargement du QR code base64 */
@@ -226,23 +209,21 @@ function Profile() {
         photo:          photoChanged ? photoFile : undefined,
       });
 
-      /* Refetch du profil complet pour récupérer la vraie URL de la photo */
       const fresh = await getProfile(user.id);
 
       if (photoChanged) {
+        // Chercher l'URL dans la réponse du PUT ou du GET
         const rawFromServer =
           fresh?.photoProfile || fresh?.photo || fresh?.avatar ||
           updatedResponse?.photoProfile || updatedResponse?.photo || updatedResponse?.avatar;
         const serverUrl = buildMediaUrl(rawFromServer);
-        const ts = Date.now();
-        if (serverUrl) {
-          const cachedUrl = `${serverUrl}?v=${ts}`;
-          fresh.photoProfile = cachedUrl;     // DashboardLayout (sidebar/header) lira cette valeur
-          savedPhotoUrlRef.current = cachedUrl; // Profile useEffect utilisera cette valeur
-        } else {
-          // Le serveur n'a pas renvoyé d'URL — garder le blob URL comme fallback pour cette session
-          savedPhotoUrlRef.current = photoPreview;
-        }
+
+        // Construire l'URL finale : URL serveur (avec cache-busting) ou blob URL de la session
+        const finalUrl = serverUrl ? `${serverUrl}?v=${Date.now()}` : photoPreview;
+
+        // Patcher fresh.photoProfile avec la bonne URL avant updateUser()
+        // → le useEffect([user]) lira directement cette valeur, pas besoin de ref
+        if (finalUrl) fresh.photoProfile = finalUrl;
       }
 
       updateUser(fresh);

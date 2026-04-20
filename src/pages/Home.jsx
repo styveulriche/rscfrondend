@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 import translations from '../i18n/translations';
 import { listPartenairesPublic } from '../services/partenaires';
 import { listDerniersArticles } from '../services/articles';
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 const API_ORIGIN = (() => {
   const full = process.env.REACT_APP_API_BASE_URL?.trim()
@@ -167,7 +168,7 @@ function Home() {
             {/* Grille articles */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
               {articles.map((a) => {
-                const imgUrl = a.imageUrl || a.image || null;
+                const imgUrl = buildMediaUrl(a.imageUrl || a.image || null);
                 const resume = a.resume || a.contenu || '';
                 return (
                   <Link key={a.id} to="/actualites"

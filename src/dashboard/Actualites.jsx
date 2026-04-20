@@ -11,6 +11,7 @@ import {
   listAdminArticles, createArticle, updateArticle,
   deleteArticle, publishArticle, archiveArticle,
 } from '../services/articles';
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 /* ─── helpers ──────────────────────────────────────────────── */
 
@@ -157,7 +158,7 @@ function ArticleForm({ initial, onSave, onCancel, saving }) {
         Image de couverture
       </label>
       <ImagePicker
-        existingUrl={initial?.imageUrl || initial?.image || null}
+        existingUrl={buildMediaUrl(initial?.imageUrl || initial?.image || null)}
         value={form.image}
         onChange={(file) => setForm((f) => ({ ...f, image: file }))}
       />
@@ -192,7 +193,7 @@ function ArticleCard({ article, canEdit, onEdit, onDelete, onPublish, onArchive 
   const [expanded, setExpanded] = useState(false);
   const statut = (article.statut || (article.publie ?? article.published ? 'PUBLIE' : 'BROUILLON')).toUpperCase();
   const badge = STATUT_BADGE[statut] || STATUT_BADGE.BROUILLON;
-  const imageUrl = article.imageUrl || article.image || null;
+  const imageUrl = buildMediaUrl(article.imageUrl || article.image || null);
   const contenu = article.contenu || '';
   const resume = article.resume || '';
 

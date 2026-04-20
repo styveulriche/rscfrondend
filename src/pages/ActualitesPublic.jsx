@@ -8,6 +8,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { listArticles } from '../services/articles';
 import { listDeclarations } from '../services/declarations';
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 /* ─── helpers ──────────────────────────────────────────────── */
 
@@ -42,7 +43,7 @@ const declLabel = (v) => {
 
 function ArticleCard({ article }) {
   const [expanded, setExpanded] = useState(false);
-  const imgUrl = article.imageUrl || article.image || null;
+  const imgUrl = buildMediaUrl(article.imageUrl || article.image || null);
   const resume = article.resume || '';
   const contenu = article.contenu || '';
   const text = contenu;

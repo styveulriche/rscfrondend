@@ -141,19 +141,25 @@ function Profile() {
       sexe:           user.sexe || '',
     });
 
-    if (savedPhotoUrlRef.current !== undefined) {
-      // Après une sauvegarde : utiliser l'URL calculée lors du submit
-      const url = savedPhotoUrlRef.current;
+    const savedUrl = savedPhotoUrlRef.current;
+    if (savedUrl !== undefined) {
       savedPhotoUrlRef.current = undefined;
-      setPhotoPreview(url);
+      setPhotoPreview(savedUrl);
     } else {
       const rawPhoto = user.photoProfile || user.photo || user.avatar || null;
-      if (rawPhoto) console.debug('[Profile] photoProfile brut :', rawPhoto);
       setPhotoPreview(buildMediaUrl(rawPhoto));
     }
 
     setPhotoFile(null);
     setPhotoChanged(false);
+
+    return () => {
+      // StrictMode invoque l'effect deux fois (effect → cleanup → effect).
+      // On restaure la valeur du ref pour que la 2e invocation l'utilise aussi.
+      if (savedUrl !== undefined) {
+        savedPhotoUrlRef.current = savedUrl;
+      }
+    };
   }, [user]);
 
   /* Chargement du QR code base64 */

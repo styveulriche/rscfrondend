@@ -14,8 +14,8 @@ export const buildMediaUrl = (path) => {
   if (/^https?:\/\//.test(p)) {
     try {
       const url = new URL(p);
-      // Rewrite localhost URLs (backend returning internal hostnames)
-      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      // In production (Docker), MEDIA_ORIGIN is '' — route via nginx proxy using pathname only
+      if (MEDIA_ORIGIN === '' || url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
         return `${MEDIA_ORIGIN}${url.pathname}${url.search}`;
       }
     } catch (_) { /* ignore */ }

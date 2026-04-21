@@ -14,11 +14,12 @@ export const buildMediaUrl = (path) => {
   if (/^https?:\/\//.test(p)) {
     try {
       const url = new URL(p);
-      // In production (Docker), MEDIA_ORIGIN is '' — route via nginx proxy using pathname only
-      if (MEDIA_ORIGIN === '' || url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      // Local dev: rewrite localhost URLs to the correct configured origin
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
         return `${MEDIA_ORIGIN}${url.pathname}${url.search}`;
       }
     } catch (_) { /* ignore */ }
+    // Return absolute backend URL as-is — the backend returns publicly accessible URLs
     return p;
   }
   return `${MEDIA_ORIGIN}${p.startsWith('/') ? '' : '/'}${p}`;

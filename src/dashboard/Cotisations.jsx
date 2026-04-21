@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   FaFileInvoiceDollar, FaCheckCircle, FaTimes,
   FaSearch, FaMoneyBillWave, FaChartBar, FaUsers, FaWallet,
@@ -413,9 +414,21 @@ const DEFAULT_FORM = { type: 'COTISATION_MENSUELLE', montant: '', periodeCoverte
 
 function UserCotisationsView() {
   const { user, balance, refreshBalance, addToBalance } = useAuth();
-  const [form, setForm] = useState(DEFAULT_FORM);
+  const location = useLocation();
+  const formRef = useRef(null);
+
+  // Pré-sélectionner le type si on arrive depuis la carte abonnement (Statistics)
+  const initialType = location.state?.type || 'COTISATION_MENSUELLE';
+  const [form, setForm] = useState({ ...DEFAULT_FORM, type: initialType });
   const [abonnement, setAbonnement] = useState(null);
   const [types, setTypes] = useState(TYPES_FALLBACK);
+
+  // Scroller vers le formulaire si type pré-sélectionné depuis Statistics
+  useEffect(() => {
+    if (location.state?.type && formRef.current) {
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+    }
+  }, [location.state?.type]);
 
   useEffect(() => {
     getAbonnementAnnuel().then(setAbonnement).catch(() => {});
@@ -533,7 +546,7 @@ function UserCotisationsView() {
         </div>
       )}
 
-      <div className="content-card" style={{ marginBottom: 20 }}>
+      <div ref={formRef} className="content-card" style={{ marginBottom: 20 }}>
         {feedback && (
           <div style={{
             background: feedback.type === 'success' ? 'rgba(46,125,50,0.1)' : 'rgba(198,40,40,0.1)',

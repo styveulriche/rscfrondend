@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FaWallet, FaHandHoldingHeart, FaChartLine, FaClock,
   FaMoneyBillWave, FaChartBar, FaUsers, FaSync, FaCalendarAlt,
@@ -439,6 +440,7 @@ function AdminStatsDashboard() {
 
 function Statistics() {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const probationInfo = useMemo(() => computeProbationInfo(user), [user]);
   const [time, setTime] = useState(() => getTimeLeft(probationInfo?.end));
   const [abonnement, setAbonnement] = useState(null);
@@ -573,19 +575,25 @@ function Statistics() {
                 )}
 
                 {!actif && (
-                  <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <p style={{ margin: 0, fontSize: 13, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <FaTimes size={12} style={{ flexShrink: 0 }} />
-                      {jamaisPayé
-                        ? 'Aucun abonnement actif. Allez dans Cotisations → sélectionnez « Cotisation annuelle ».'
-                        : 'Abonnement expiré. Allez dans Cotisations → sélectionnez « Cotisation annuelle ».'}
+                      {jamaisPayé ? 'Aucun abonnement annuel actif.' : 'Votre abonnement annuel a expiré.'}
                     </p>
-                    <button
-                      onClick={refreshAbonnement}
-                      style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
-                    >
-                      Actualiser
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => navigate('/dashboard/cotisations', { state: { type: 'COTISATION_ANNUELLE' } })}
+                        style={{ background: 'rgba(255,255,255,0.95)', border: 'none', color: '#37474f', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {jamaisPayé ? 'Souscrire l\'abonnement annuel' : 'Renouveler l\'abonnement'}
+                      </button>
+                      <button
+                        onClick={refreshAbonnement}
+                        style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: 8, padding: '8px 12px', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        Actualiser
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

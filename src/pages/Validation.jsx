@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUpload, FaUser } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { updateProfil } from '../services/users';
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 const inputStyle = {
   background: 'rgba(255,255,255,0.85)',
@@ -23,6 +25,8 @@ function Validation() {
   const [form1, setForm1] = useState({ phone: '', birthDate: '', gender: '' });
   const [form2, setForm2] = useState({ photo: null, photoPreview: null, hasLocal: '', status: '' });
   const [form3, setForm3] = useState({ docType: '', docFile: null });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -32,17 +36,32 @@ function Validation() {
     reader.readAsDataURL(file);
   };
 
-  const handleFinish = (e) => {
+  const sexeMap = { masculin: 'M', feminin: 'F' };
+
+  const handleFinish = async (e) => {
     e.preventDefault();
-    // Sauvegarder la photo et les infos dans le contexte
-    updateUser({
-      avatar: form2.photoPreview,
-      phone: form1.phone,
-      birthDate: form1.birthDate,
-      gender: form1.gender,
-      status: form2.status,
-    });
-    navigate('/dashboard');
+    if (!user?.id) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await updateProfil(user.id, {
+        telephone:      form1.phone      || null,
+        dateNaissance:  form1.birthDate  || null,
+        sexe:           sexeMap[form1.gender] || null,
+        statutDiaspora: form2.status     || null,
+        photo:          form2.photo      || undefined,
+      });
+      const rawPhoto = updated?.photoProfile || updated?.photo || updated?.avatar;
+      updateUser({
+        ...updated,
+        photoProfile: rawPhoto ? buildMediaUrl(rawPhoto) : (form2.photoPreview || null),
+      });
+      navigate('/dashboard');
+    } catch (err) {
+      setSaveError(err?.response?.data?.message || 'Erreur lors de la sauvegarde.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const Stepper = () => (
@@ -171,7 +190,12 @@ function Validation() {
               </label>
             )}
 
-            <button type="submit" className="btn-validation">Terminer</button>
+            {saveError && (
+              <p style={{ color: '#ff6b6b', fontSize: 13, textAlign: 'center', margin: 0 }}>{saveError}</p>
+            )}
+            <button type="submit" className="btn-validation" disabled={saving}>
+              {saving ? 'Enregistrement…' : 'Terminer'}
+            </button>
           </form>
         )}
       </div>

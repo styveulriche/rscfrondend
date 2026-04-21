@@ -14,6 +14,7 @@ import {
 } from '../services/ayantsDroit';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
+import { buildMediaUrl } from '../utils/mediaUrl';
 
 const CA_PHONE_PATTERN = '(\\+?1[\\s\\-]?)?\\(?[2-9][0-9]{2}\\)?[\\s\\-]?[0-9]{3}[\\s\\-]?[0-9]{4}';
 
@@ -412,7 +413,7 @@ function AyantsDroit() {
                     {b.idFileUrl && (
                       <button
                         type="button"
-                        onClick={() => setLightbox({ url: b.idFileUrl, name: b.idFileName })}
+                        onClick={() => setLightbox({ url: buildMediaUrl(b.idFileUrl), name: b.idFileName })}
                         style={{
                           marginTop: 8, background: 'rgba(255,255,255,0.15)',
                           border: '1px solid rgba(255,255,255,0.3)',

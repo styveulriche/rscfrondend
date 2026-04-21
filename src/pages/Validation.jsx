@@ -19,7 +19,7 @@ const inputStyle = {
 
 function Validation() {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [step, setStep] = useState(1);
 
   const [form1, setForm1] = useState({ phone: '', birthDate: '', gender: '' });

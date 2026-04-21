@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FaMapMarkerAlt, FaHome, FaTrash, FaStar, FaPlus, FaCity } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaHome, FaTrash, FaStar, FaPlus } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { listByUser, createAddress, deleteAddress, setPrincipal } from '../services/addresses';
 import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import { StatsRow } from './Statistics';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 const PROVINCES_CA = [
   'Alberta', 'Colombie-Britannique', 'Manitoba', 'Nouveau-Brunswick',
@@ -156,6 +157,20 @@ function Addresses() {
             <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700 }}>Nouvelle adresse</h4>
             <form onSubmit={handleSubmit}>
               <div className="settings-grid">
+                <div style={{ gridColumn: 'span 2' }}>
+                  <p className="settings-label">Rechercher l'adresse <span style={{ color: '#c62828' }}>*</span></p>
+                  <AddressAutocomplete
+                    value={form.adresseComplete}
+                    onChange={(val) => setForm({ ...form, adresseComplete: val })}
+                    onSelect={({ adresseComplete, ville, province, codePostal }) =>
+                      setForm((prev) => ({ ...prev, adresseComplete, ville, province, codePostal }))
+                    }
+                    required
+                  />
+                  <p style={{ fontSize: 11, color: 'var(--text-gray)', margin: '4px 0 0' }}>
+                    Tapez votre adresse pour voir les suggestions, ou remplissez les champs manuellement.
+                  </p>
+                </div>
                 <div>
                   <p className="settings-label">Province <span style={{ color: '#c62828' }}>*</span></p>
                   <select
@@ -170,17 +185,13 @@ function Addresses() {
                 </div>
                 <div>
                   <p className="settings-label">Ville <span style={{ color: '#c62828' }}>*</span></p>
-                  <div style={{ position: 'relative' }}>
-                    <FaCity size={12} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pink-card)' }} />
-                    <input
-                      className="form-input"
-                      style={{ paddingLeft: 32 }}
-                      placeholder="Montréal"
-                      value={form.ville}
-                      onChange={(e) => setForm({ ...form, ville: e.target.value })}
-                      required
-                    />
-                  </div>
+                  <input
+                    className="form-input"
+                    placeholder="Montréal"
+                    value={form.ville}
+                    onChange={(e) => setForm({ ...form, ville: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
                   <p className="settings-label">Code postal <span style={{ color: '#c62828' }}>*</span></p>
@@ -210,18 +221,6 @@ function Addresses() {
                     />
                     Définir comme principale
                   </label>
-                </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <p className="settings-label">Adresse complète <span style={{ color: '#c62828' }}>*</span></p>
-                  <textarea
-                    className="form-input"
-                    placeholder="123 Rue Principale, App 4, Montréal, QC H1A 1A1"
-                    value={form.adresseComplete}
-                    onChange={(e) => setForm({ ...form, adresseComplete: e.target.value })}
-                    rows={2}
-                    style={{ resize: 'vertical' }}
-                    required
-                  />
                 </div>
               </div>
               <button type="submit" className="btn-add" style={{ marginTop: 12 }} disabled={createLoading}>

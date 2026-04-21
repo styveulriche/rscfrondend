@@ -65,13 +65,13 @@ export async function updateDeclaration(id, payload) {
 	return r.data;
 }
 
-export async function validateDeclaration(id) {
-	const r = await api.put(`/declarations/${id}/valider`);
+export async function validateDeclaration(id, commentaire) {
+	const r = await api.put(`/declarations/${id}/valider`, commentaire ? { commentaire } : {});
 	return r.data;
 }
 
-export async function rejectDeclaration(id, motif) {
-	const r = await api.put(`/declarations/${id}/rejeter`, null, { params: { motif } });
+export async function rejectDeclaration(id, raison) {
+	const r = await api.put(`/declarations/${id}/rejeter`, { raison });
 	return r.data;
 }
 

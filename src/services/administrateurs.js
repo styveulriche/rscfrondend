@@ -71,6 +71,7 @@ export async function desactiveAdmin(id) {
 export const disableAdmin = desactiveAdmin;
 
 export async function updatePermissions(id, permissions) {
-	const r = await api.put(`/administrateurs/${id}/permissions`, permissions);
+	const role = typeof permissions === 'string' ? permissions : permissions?.role;
+	const r = await api.put(`/administrateurs/${id}/permissions`, { role });
 	return r.data;
 }

@@ -75,17 +75,17 @@ export async function finishDossier(id) {
 	return r.data;
 }
 
-export async function cancelDossier(id, motif) {
-	const r = await api.put(`/dossiers/${id}/annuler`, null, { params: { motif } });
+export async function cancelDossier(id, raison) {
+	const r = await api.put(`/dossiers/${id}/annuler`, null, { params: { raison } });
 	return r.data;
 }
 
 export async function setStatus(id, statut) {
-	const r = await api.put(`/dossiers/${id}/statut`, null, { params: { statut } });
+	const r = await api.put(`/dossiers/${id}/statut`, { statut });
 	return r.data;
 }
 
-export async function updateFlightInfo(id, compagnie, numeroVol, date) {
-	const r = await api.put(`/dossiers/${id}/info-vol`, null, { params: { compagnie, numeroVol, date } });
+export async function updateFlightInfo(id, { compagnieAerienne, numeroVol, dateRapatriement, villeDepart, villeArrivee } = {}) {
+	const r = await api.put(`/dossiers/${id}/info-vol`, { compagnieAerienne, numeroVol, dateRapatriement, villeDepart, villeArrivee });
 	return r.data;
 }

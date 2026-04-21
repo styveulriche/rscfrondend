@@ -3,8 +3,13 @@ import api from './api';
 // ── Documents d'une déclaration ──────────────────────────────────
 
 export async function addDocument(declarationId, payload) {
-  // payload: { type, nomFichier, urlDocument, description }
-  const r = await api.post(`/declarations/${declarationId}/documents`, payload);
+  // payload: { type, nomFichier, fichier (File), description }
+  const form = new FormData();
+  if (payload.type)        form.append('type', payload.type);
+  if (payload.nomFichier)  form.append('nomFichier', payload.nomFichier);
+  if (payload.description) form.append('description', payload.description);
+  if (payload.fichier)     form.append('fichier', payload.fichier);
+  const r = await api.post(`/declarations/${declarationId}/documents`, form);
   return r.data;
 }
 

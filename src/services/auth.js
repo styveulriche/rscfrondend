@@ -36,12 +36,12 @@ export async function logout() {
 
 export async function verifyMfa({ email, code, xForwardedFor }) {
   const headers = xForwardedFor ? { 'X-Forwarded-For': xForwardedFor } : {};
-  const res = await api.post('/auth/verify-mfa', null, { params: { email, code }, headers });
+  const res = await api.post('/auth/verify-mfa', { email, code }, { headers });
   return res.data;
 }
 
 export async function verifyEmailCode({ email, code }) {
-  const res = await api.post('/auth/verify-email-code', null, { params: { email, code } });
+  const res = await api.post('/auth/verify-email-code', { email, code });
   return res.data;
 }
 

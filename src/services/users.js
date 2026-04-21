@@ -134,7 +134,7 @@ export async function updateProfil(id, fields = {}) {
 	append('sexe',           fields.sexe);
 	append('paysOrigine',    fields.paysOrigine);
 	append('statutDiaspora', fields.statutDiaspora);
-	if (fields.photo) form.append('photo', fields.photo); // File object
+	if (fields.photo) form.append('fichier', fields.photo); // File object
 	const r = await api.put(`/utilisateurs/${id}/profil`, form, {
 		headers: { 'Content-Type': 'multipart/form-data' },
 	});
@@ -147,7 +147,7 @@ export async function updateProfil(id, fields = {}) {
  */
 export async function uploadPhotoProfile(id, file) {
 	const form = new FormData();
-	form.append('photo', file);
+	form.append('fichier', file);
 	const r = await api.put(`/utilisateurs/${id}/photo-profil`, form, {
 		headers: { 'Content-Type': 'multipart/form-data' },
 	});

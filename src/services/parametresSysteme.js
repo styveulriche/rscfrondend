@@ -4,12 +4,12 @@ import api from './api';
 
 export async function createParametre(modifiePar, payload) {
   // payload: { cle, valeur, description, categorie, type, publicAccess }
-  const r = await api.post('/parametres', payload, { params: { modifiePar } });
+  const r = await api.post('/parametres', payload);
   return r.data;
 }
 
 export async function updateParametre(id, modifiePar, payload) {
-  const r = await api.put(`/parametres/${id}`, payload, { params: { modifiePar } });
+  const r = await api.put(`/parametres/${id}`, payload);
   return r.data;
 }
 
@@ -34,9 +34,7 @@ export async function listParametresByCategorie(categorie) {
 }
 
 export async function patchValeur(cle, valeur, modifiePar) {
-  const r = await api.patch(`/parametres/cle/${cle}/valeur`, null, {
-    params: { valeur, modifiePar },
-  });
+  const r = await api.patch(`/parametres/cle/${cle}/valeur`, null, { params: { valeur } });
   return r.data;
 }
 

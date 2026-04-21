@@ -38,10 +38,8 @@ export async function getAidesByStatut(statut) {
 
 // ── Workflow ─────────────────────────────────────────────────────
 
-export async function approuverAide(id, adminId) {
-  const r = await api.put(`/aides-financieres/${id}/approuver`, null, {
-    params: { adminId },
-  });
+export async function approuverAide(id, commentaire) {
+  const r = await api.put(`/aides-financieres/${id}/approuver`, commentaire ? { commentaire } : {});
   return r.data;
 }
 

@@ -35,12 +35,12 @@ export async function getTicketDetail(id) {
 }
 
 export async function updateTicketStatus(id, statut) {
-  const res = await api.patch(`/admin/messages-support/${id}/statut`, null, { params: { statut } });
+  const res = await api.patch(`/admin/messages-support/${id}/statut`, { statut });
   return res.data;
 }
 
 export async function assignTicket(id, adminId) {
-  const res = await api.patch(`/admin/messages-support/${id}/assigner`, null, { params: { adminId } });
+  const res = await api.patch(`/admin/messages-support/${id}/assigner`, { adminId });
   return res.data;
 }
 

@@ -189,11 +189,12 @@ const STATUT_BADGE = {
   ARCHIVE:   { label: 'Archivé',  bg: 'rgba(100,100,100,0.12)', color: '#666' },
 };
 
-function ArticleCard({ article, canEdit, onEdit, onDelete, onPublish, onArchive }) {
+function ArticleCard({ article, cachedImage, canEdit, onEdit, onDelete, onPublish, onArchive }) {
   const [expanded, setExpanded] = useState(false);
   const statut = (article.statut || (article.publie ?? article.published ? 'PUBLIE' : 'BROUILLON')).toUpperCase();
   const badge = STATUT_BADGE[statut] || STATUT_BADGE.BROUILLON;
-  const imageUrl = buildMediaUrl(article.imageUrl || article.image || null);
+  const rawImageUrl = buildMediaUrl(article.imageUrl || article.image || null);
+  const imageUrl = cachedImage?.blobUrl || cachedImage?.serverUrl || rawImageUrl;
   const contenu = article.contenu || '';
   const resume = article.resume || '';
 
@@ -341,6 +342,7 @@ export default function Actualites() {
   const [editTarget, setEditTarget] = useState(null);
   const [formSaving, setFormSaving] = useState(false);
   const [artMsg, setArtMsg] = useState(null);
+  const [imageCache, setImageCache] = useState({}); // { [id]: { blobUrl, serverUrl } }
 
   /* déclarations */
   const [deces, setDeces] = useState([]);
@@ -388,13 +390,29 @@ export default function Actualites() {
     setFormSaving(true);
     setArtMsg(null);
     try {
+      let saved;
       if (editTarget?.id) {
-        await updateArticle(editTarget.id, form);
+        saved = await updateArticle(editTarget.id, form);
         setArtMsg({ type: 'success', text: 'Actualité mise à jour.' });
       } else {
-        await createArticle(form);
+        saved = await createArticle(form);
         setArtMsg({ type: 'success', text: 'Actualité créée.' });
       }
+
+      if (form.image instanceof File && saved?.id) {
+        const ts = Date.now();
+        const blobUrl = URL.createObjectURL(form.image);
+        const rawFromServer = saved?.imageUrl || saved?.image;
+        const serverUrl = buildMediaUrl(rawFromServer);
+        setImageCache((prev) => ({
+          ...prev,
+          [saved.id]: {
+            blobUrl,
+            serverUrl: serverUrl ? `${serverUrl}?v=${ts}` : null,
+          },
+        }));
+      }
+
       setShowForm(false);
       setEditTarget(null);
       await loadArticles();
@@ -532,7 +550,13 @@ export default function Actualites() {
 
             {showForm && (
               <ArticleForm
-                initial={editTarget ? { titre: editTarget.titre, contenu: editTarget.contenu, categorie: editTarget.categorie || 'Actualité', image: editTarget.image || '' } : null}
+                initial={editTarget ? {
+                  titre: editTarget.titre,
+                  resume: editTarget.resume || '',
+                  contenu: editTarget.contenu,
+                  categorie: editTarget.categorie || 'Actualité',
+                  imageUrl: editTarget.imageUrl || editTarget.image || '',
+                } : null}
                 onSave={handleSave}
                 onCancel={handleCancelForm}
                 saving={formSaving}
@@ -567,6 +591,7 @@ export default function Actualites() {
               <ArticleCard
                 key={a.id}
                 article={a}
+                cachedImage={imageCache[a.id]}
                 canEdit={canPublish}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

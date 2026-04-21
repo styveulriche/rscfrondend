@@ -43,7 +43,7 @@ const declLabel = (v) => {
 
 function ArticleCard({ article }) {
   const [expanded, setExpanded] = useState(false);
-  const imgUrl = buildMediaUrl(article.imageUrl || article.image || null);
+  const imgUrl = buildMediaUrl(article.imageUrl || article.image || article.urlImage || article.coverImage || article.photoUrl || article.imagePath || null);
   const resume = article.resume || '';
   const contenu = article.contenu || '';
   const text = contenu;
@@ -60,7 +60,7 @@ function ArticleCard({ article }) {
       {/* Image ou placeholder */}
       <div style={{ height: 200, background: 'linear-gradient(135deg, #8B1C1C, #C44040)', overflow: 'hidden', flexShrink: 0 }}>
         {imgUrl
-          ? <img src={imgUrl} alt={article.titre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
+          ? <img src={imgUrl} alt={article.titre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => { console.warn('[RSC] img load failed:', e.target.src); e.target.style.display = 'none'; }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FaNewspaper size={40} color="rgba(255,255,255,0.25)" />
             </div>

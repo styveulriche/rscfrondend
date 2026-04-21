@@ -7,9 +7,9 @@ RUN npm ci
 
 COPY . .
 
-# API via proxy nginx (pas de CORS), médias directement sur le backend
+# API via proxy nginx (pas de CORS), médias aussi via nginx proxy
 ENV REACT_APP_API_BASE_URL=/api/v1
-ENV REACT_APP_MEDIA_BASE_URL=https://rsc-production.up.railway.app
+ENV REACT_APP_MEDIA_BASE_URL=
 ENV CI=false
 
 RUN npm run build

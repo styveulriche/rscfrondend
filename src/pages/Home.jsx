@@ -44,7 +44,9 @@ function Home() {
     listDerniersArticles()
       .then((data) => {
         const list = Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []);
-        setArticles(list.slice(0, 5));
+        const articles = list.slice(0, 5);
+        if (articles.length > 0) console.log('[RSC] articles API fields:', Object.keys(articles[0]), articles[0]);
+        setArticles(articles);
       })
       .catch(() => {});
   }, []);
@@ -156,7 +158,7 @@ function Home() {
             {/* Grille articles */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
               {articles.map((a) => {
-                const imgUrl = buildMediaUrl(a.imageUrl || a.image || null);
+                const imgUrl = buildMediaUrl(a.imageUrl || a.image || a.urlImage || a.coverImage || a.photoUrl || a.imagePath || null);
                 const resume = a.resume || a.contenu || '';
                 return (
                   <Link key={a.id} to="/actualites"
@@ -166,7 +168,7 @@ function Home() {
                     {/* Image */}
                     <div style={{ height: 180, background: 'linear-gradient(135deg, var(--red-primary), var(--red-light))', overflow: 'hidden', flexShrink: 0 }}>
                       {imgUrl
-                        ? <img src={imgUrl} alt={a.titre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                        ? <img src={imgUrl} alt={a.titre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => { console.warn('[RSC] img load failed:', e.target.src); e.target.style.display = 'none'; }} />
                         : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <FaNewspaper size={36} color="rgba(255,255,255,0.3)" />
                           </div>

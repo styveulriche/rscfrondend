@@ -6,12 +6,9 @@ import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import { StatsRow } from './Statistics';
 import AddressAutocomplete from '../components/AddressAutocomplete';
+import VILLES_PAR_PROVINCE from '../data/villesCanada';
 
-const PROVINCES_CA = [
-  'Alberta', 'Colombie-Britannique', 'Manitoba', 'Nouveau-Brunswick',
-  'Terre-Neuve-et-Labrador', 'Nouvelle-Écosse', 'Ontario', 'Île-du-Prince-Édouard',
-  'Québec', 'Saskatchewan', 'Territoires du Nord-Ouest', 'Nunavut', 'Yukon',
-];
+const PROVINCES_CA = Object.keys(VILLES_PAR_PROVINCE).sort((a, b) => a.localeCompare(b, 'fr'));
 
 const INITIAL_FORM = {
   province: '',
@@ -176,7 +173,7 @@ function Addresses() {
                   <select
                     className="form-input"
                     value={form.province}
-                    onChange={(e) => setForm({ ...form, province: e.target.value })}
+                    onChange={(e) => setForm({ ...form, province: e.target.value, ville: '' })}
                     required
                   >
                     <option value="">Sélectionner</option>
@@ -185,13 +182,18 @@ function Addresses() {
                 </div>
                 <div>
                   <p className="settings-label">Ville <span style={{ color: '#c62828' }}>*</span></p>
-                  <input
+                  <select
                     className="form-input"
-                    placeholder="Montréal"
                     value={form.ville}
                     onChange={(e) => setForm({ ...form, ville: e.target.value })}
                     required
-                  />
+                    disabled={!form.province}
+                  >
+                    <option value="">{form.province ? 'Sélectionner une ville' : '— Choisir une province d\'abord —'}</option>
+                    {(VILLES_PAR_PROVINCE[form.province] || []).map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <p className="settings-label">Code postal <span style={{ color: '#c62828' }}>*</span></p>

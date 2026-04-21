@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { buildMediaUrl } from '../utils/mediaUrl';
+import { safeStorage } from '../utils/safeStorage';
 import {
   login as loginService,
   adminLogin as adminLoginService,
@@ -92,7 +93,7 @@ const decodeJwtRoles = (token) => {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('rsc_user');
+    const saved = safeStorage.getItem('rsc_user');
     return saved ? withRoleMetadata(JSON.parse(saved)) : null;
   });
 
@@ -152,18 +153,18 @@ export function AuthProvider({ children }) {
 
   const persistTokens = ({ token, accessToken, refreshToken }) => {
     const t = token || accessToken;
-    if (t) localStorage.setItem('rsc_token', t);
-    if (refreshToken) localStorage.setItem('rsc_refresh_token', refreshToken);
+    if (t) safeStorage.setItem('rsc_token', t);
+    if (refreshToken) safeStorage.setItem('rsc_refresh_token', refreshToken);
   };
 
   const clearTokens = () => {
-    localStorage.removeItem('rsc_token');
-    localStorage.removeItem('rsc_refresh_token');
+    safeStorage.removeItem('rsc_token');
+    safeStorage.removeItem('rsc_refresh_token');
   };
 
   const persistUser = (profile) => {
     const enriched = withRoleMetadata(profile);
-    localStorage.setItem('rsc_user', JSON.stringify(enriched));
+    safeStorage.setItem('rsc_user', JSON.stringify(enriched));
     setUser(enriched);
   };
 
@@ -201,7 +202,7 @@ export function AuthProvider({ children }) {
     const allowedRoles = options.allowedRoles?.length ? options.allowedRoles : ADMIN_ROLE_KEYS;
     if (options.requireAdmin && !hasRoleFromList(normalized.roles, allowedRoles)) {
       clearTokens();
-      localStorage.removeItem('rsc_user');
+      safeStorage.removeItem('rsc_user');
       setUser(null);
       setBalance(0);
       throw new Error(options.adminErrorMessage || 'Accès administrateur refusé.');
@@ -272,7 +273,7 @@ export function AuthProvider({ children }) {
     // on mount, validate stored token and user
     const init = async () => {
       const token = localStorage.getItem('rsc_token');
-      const saved = localStorage.getItem('rsc_user');
+      const saved = safeStorage.getItem('rsc_user');
       if (!token || !saved) {
         setLoading(false);
         return;
@@ -301,7 +302,7 @@ export function AuthProvider({ children }) {
               ...(mergedRoles.length > 0 ? { roles: mergedRoles } : {}),
             });
             setUser(merged);
-            localStorage.setItem('rsc_user', JSON.stringify(merged));
+            safeStorage.setItem('rsc_user', JSON.stringify(merged));
             await refreshBalance(merged.id);
           } catch (err) {
             // getProfile a échoué → tenter getAdmin (admin sans compte utilisateur)
@@ -321,7 +322,7 @@ export function AuthProvider({ children }) {
               ...(mergedRoles.length > 0 ? { roles: mergedRoles } : {}),
             });
             setUser(updatedUser);
-            localStorage.setItem('rsc_user', JSON.stringify(updatedUser));
+            safeStorage.setItem('rsc_user', JSON.stringify(updatedUser));
             // Pas de refreshBalance pour les admins (pas de portefeuille)
             if (!hasRoleFromList(mergedRoles.length > 0 ? mergedRoles : extractRoles(parsed))) {
               await refreshBalance(updatedUser.id);
@@ -333,7 +334,7 @@ export function AuthProvider({ children }) {
         }
       } catch (err) {
         clearTokens();
-        localStorage.removeItem('rsc_user');
+        safeStorage.removeItem('rsc_user');
         setUser(null);
         setBalance(0);
       } finally {
@@ -346,7 +347,7 @@ export function AuthProvider({ children }) {
   const updateUser = (updates) => {
     const updated = withRoleMetadata({ ...user, ...updates });
     setUser(updated);
-    localStorage.setItem('rsc_user', JSON.stringify(updated));
+    safeStorage.setItem('rsc_user', JSON.stringify(updated));
   };
 
   const logout = async () => {
@@ -356,7 +357,7 @@ export function AuthProvider({ children }) {
       // ignore logout failures and clear local state anyway
     } finally {
       setUser(null);
-      localStorage.removeItem('rsc_user');
+      safeStorage.removeItem('rsc_user');
       clearTokens();
       setBalance(0);
     }

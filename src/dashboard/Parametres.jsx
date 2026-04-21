@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { safeStorage } from '../utils/safeStorage';
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { StatsRow } from './Statistics';
 import { useAuth } from '../context/AuthContext';
@@ -107,7 +108,7 @@ function Parametres() {
       );
       if (formComplete) {
         // Marquer définitivement le profil comme complété pour les prochaines connexions
-        localStorage.setItem('rsc_profile_completed', String(user.id));
+        safeStorage.setItem('rsc_profile_completed', String(user.id));
       }
       if (formComplete && profileRequired) {
         navigate('/dashboard/statistiques', { replace: true, state: { profileJustCompleted: true } });

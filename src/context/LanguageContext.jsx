@@ -1,16 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { safeStorage } from '../utils/safeStorage';
 
 const STORAGE_KEY = 'rsc_lang';
 const DEFAULT_LANG = 'fr';
-const canUseDOM = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+const canUseDOM = typeof window !== 'undefined';
 const canUseDocument = typeof document !== 'undefined';
 
 const getInitialLanguage = () => {
-  if (!canUseDOM) {
-    return DEFAULT_LANG;
-  }
-
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_LANG;
+  if (!canUseDOM) return DEFAULT_LANG;
+  return safeStorage.getItem(STORAGE_KEY) || DEFAULT_LANG;
 };
 
 const LanguageContext = createContext({
@@ -23,7 +21,7 @@ export function LanguageProvider({ children }) {
 
   useEffect(() => {
     if (canUseDOM) {
-      localStorage.setItem(STORAGE_KEY, lang);
+      safeStorage.setItem(STORAGE_KEY, lang);
     }
   }, [lang]);
 
@@ -33,7 +31,7 @@ export function LanguageProvider({ children }) {
     }
 
     const syncFromStorage = () => {
-      const storedLang = localStorage.getItem(STORAGE_KEY);
+      const storedLang = safeStorage.getItem(STORAGE_KEY);
       if (storedLang && storedLang !== lang) {
         setLang(storedLang);
       }

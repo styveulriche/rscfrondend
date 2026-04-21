@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { safeStorage } from '../utils/safeStorage';
 
 const DEFAULT_PORT = process.env.REACT_APP_API_PORT || '8080';
 const LOCAL_BASE_URL = `http://localhost:${DEFAULT_PORT}/api/v1`;
@@ -41,7 +42,7 @@ api.interceptors.request.use((config) => {
     return config;
   }
 
-  const token = localStorage.getItem('rsc_token');
+  const token = safeStorage.getItem('rsc_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -59,12 +60,12 @@ const addRefreshSubscriber = (callback) => {
 };
 
 const persistTokens = (token, refreshToken) => {
-  if (token) localStorage.setItem('rsc_token', token);
-  if (refreshToken) localStorage.setItem('rsc_refresh_token', refreshToken);
+  if (token) safeStorage.setItem('rsc_token', token);
+  if (refreshToken) safeStorage.setItem('rsc_refresh_token', refreshToken);
 };
 
 const requestNewToken = async () => {
-  const storedRefreshToken = localStorage.getItem('rsc_refresh_token');
+  const storedRefreshToken = safeStorage.getItem('rsc_refresh_token');
   if (!storedRefreshToken) {
     throw new Error('Missing refresh token');
   }
@@ -79,8 +80,8 @@ const requestNewToken = async () => {
 };
 
 const resetSession = () => {
-  localStorage.removeItem('rsc_token');
-  localStorage.removeItem('rsc_refresh_token');
+  safeStorage.removeItem('rsc_token');
+  safeStorage.removeItem('rsc_refresh_token');
 };
 
 api.interceptors.response.use(
@@ -119,7 +120,7 @@ api.interceptors.response.use(
 
         if (!newToken) throw new Error('Unable to refresh token');
 
-        persistTokens(newToken, newRefreshToken || localStorage.getItem('rsc_refresh_token'));
+        persistTokens(newToken, newRefreshToken || safeStorage.getItem('rsc_refresh_token'));
         onRefreshed(newToken);
         isRefreshing = false;
 

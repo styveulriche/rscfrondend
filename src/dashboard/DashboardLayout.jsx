@@ -24,6 +24,7 @@ const normalizeList = (p) => {
 const baseMenuItems = [
   { path: 'statistiques',  label: 'Statistiques',            Icon: FaChartBar },
   { path: 'finances',      label: 'Finances',                Icon: FaWallet },
+  { path: 'cotisations',   label: 'Mes cotisations',         Icon: FaFileInvoiceDollar, userOnly: true },
   { path: 'don',           label: 'Faire un don',            Icon: FaHandHoldingHeart },
   { path: 'actualites',    label: 'Actualités & Décès',      Icon: FaNewspaper },
   { path: 'ayant-droit',   label: 'Mes ayants droit',        Icon: FaUsers,   userOnly: true },

@@ -1,12 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { safeStorage } from '../utils/safeStorage';
 
 const PROFILE_REQUIRED_FIELDS = ['telephone', 'paysOrigine', 'statutDiaspora', 'dateNaissance'];
 
 export const isProfileIncomplete = (user) => {
   if (!user) return false;
   // Si l'utilisateur a déjà complété son profil une fois, ne plus bloquer
-  if (localStorage.getItem('rsc_profile_completed') === String(user.id)) return false;
+  if (safeStorage.getItem('rsc_profile_completed') === String(user.id)) return false;
   return PROFILE_REQUIRED_FIELDS.some((field) => !user[field]);
 };
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUpload, FaUser } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
-import { updateProfil } from '../services/users';
+import { updateProfil, uploadPhotoProfile } from '../services/users';
 import { buildMediaUrl } from '../utils/mediaUrl';
 
 const inputStyle = {
@@ -49,13 +49,24 @@ function Validation() {
         dateNaissance:  form1.birthDate  || null,
         sexe:           sexeMap[form1.gender] || null,
         statutDiaspora: form2.status     || null,
-        photo:          form2.photo      || undefined,
       });
-      const rawPhoto = updated?.photoProfile || updated?.photo || updated?.avatar;
-      updateUser({
-        ...updated,
-        photoProfile: rawPhoto ? buildMediaUrl(rawPhoto) : (form2.photoPreview || null),
-      });
+
+      // Upload photo via l'endpoint dédié pour garantir la persistance en BD
+      let photoProfile = null;
+      if (form2.photo instanceof File) {
+        try {
+          const photoRes = await uploadPhotoProfile(user.id, form2.photo);
+          const rawPhoto = photoRes?.photoProfile || photoRes?.photo || photoRes?.avatar || photoRes?.url;
+          photoProfile = rawPhoto ? buildMediaUrl(rawPhoto) : form2.photoPreview;
+        } catch {
+          photoProfile = form2.photoPreview;
+        }
+      } else {
+        const rawPhoto = updated?.photoProfile || updated?.photo || updated?.avatar;
+        photoProfile = rawPhoto ? buildMediaUrl(rawPhoto) : null;
+      }
+
+      updateUser({ ...updated, photoProfile });
       navigate('/dashboard');
     } catch (err) {
       setSaveError(err?.response?.data?.message || 'Erreur lors de la sauvegarde.');

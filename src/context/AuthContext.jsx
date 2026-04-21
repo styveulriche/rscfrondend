@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { buildMediaUrl } from '../utils/mediaUrl';
 import {
   login as loginService,
   adminLogin as adminLoginService,
@@ -192,9 +193,11 @@ export function AuthProvider({ children }) {
     const profileRoles = extractRoles(profile ?? {});
     const mergedRoles = [...new Set([...jwtRoles, ...payloadRoles, ...profileRoles])];
     const baseData = profile ?? payload;
-    const normalized = withRoleMetadata(
-      mergedRoles.length > 0 ? { ...baseData, roles: mergedRoles } : baseData
-    );
+    const rawPhoto = baseData?.photoProfile || baseData?.photo || baseData?.avatar;
+    const normalized = withRoleMetadata({
+      ...(mergedRoles.length > 0 ? { ...baseData, roles: mergedRoles } : baseData),
+      photoProfile: rawPhoto ? buildMediaUrl(rawPhoto) : null,
+    });
     const allowedRoles = options.allowedRoles?.length ? options.allowedRoles : ADMIN_ROLE_KEYS;
     if (options.requireAdmin && !hasRoleFromList(normalized.roles, allowedRoles)) {
       clearTokens();
@@ -287,9 +290,14 @@ export function AuthProvider({ children }) {
             const savedRoles = extractRoles(parsed);
             const profileRoles = extractRoles(profile);
             const mergedRoles = [...new Set([...savedRoles, ...profileRoles])];
+            const rawPhoto = profile?.photoProfile || profile?.photo || profile?.avatar;
+            const mergedPhoto = rawPhoto
+              ? buildMediaUrl(rawPhoto)
+              : (parsed?.photoProfile || parsed?.photo || parsed?.avatar || null);
             const merged = withRoleMetadata({
               ...parsed,
               ...profile,
+              photoProfile: mergedPhoto,
               ...(mergedRoles.length > 0 ? { roles: mergedRoles } : {}),
             });
             setUser(merged);
@@ -302,9 +310,14 @@ export function AuthProvider({ children }) {
             const savedRoles = extractRoles(parsed);
             const adminRoles = extractRoles(adminProfile);
             const mergedRoles = [...new Set([...savedRoles, ...adminRoles])];
+            const rawAdminPhoto = adminProfile?.photoProfile || adminProfile?.photo || adminProfile?.avatar;
+            const mergedAdminPhoto = rawAdminPhoto
+              ? buildMediaUrl(rawAdminPhoto)
+              : (parsed?.photoProfile || parsed?.photo || parsed?.avatar || null);
             const updatedUser = withRoleMetadata({
               ...parsed,
               ...(adminProfile || {}),
+              photoProfile: mergedAdminPhoto,
               ...(mergedRoles.length > 0 ? { roles: mergedRoles } : {}),
             });
             setUser(updatedUser);

@@ -65,33 +65,55 @@ const STATUTS = [
 function AbonnementCard({ abonnement }) {
   if (!abonnement) return null;
   const actif = abonnement.actif === true;
+  const jamaisPayé = !abonnement.datePaiement;
   const joursRestants = abonnement.joursRestants ?? null;
   const totalJours = 365;
   const pct = joursRestants !== null ? Math.max(0, Math.min(100, Math.round((joursRestants / totalJours) * 100))) : null;
-  const barColor = joursRestants > 60 ? '#2e7d32' : joursRestants > 20 ? '#f57c00' : '#c62828';
+  const barColor = joursRestants > 60 ? 'rgba(46,213,115,0.9)' : joursRestants > 20 ? '#f57c00' : '#c62828';
   const formatD = (v) => { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-CA'); };
+
+  const bgGradient = actif
+    ? 'linear-gradient(135deg,#1b5e20,#2e7d32)'
+    : 'linear-gradient(135deg,#37474f,#546e7a)';
 
   return (
     <div style={{
-      background: actif ? 'linear-gradient(135deg,#1565c0,#1976d2)' : 'linear-gradient(135deg,#37474f,#546e7a)',
+      background: bgGradient,
       borderRadius: 14, padding: '18px 22px', color: 'white', marginBottom: 20,
+      boxShadow: actif ? '0 4px 20px rgba(46,125,50,0.35)' : '0 2px 10px rgba(0,0,0,0.15)',
+      transition: 'all 0.4s ease',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <FaCalendarAlt size={18} color="rgba(255,255,255,0.8)" />
         <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>Abonnement annuel RSC</p>
-        <span style={{ marginLeft: 'auto', background: actif ? 'rgba(46,213,115,0.25)' : 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '2px 12px', fontSize: 11, fontWeight: 700 }}>
-          {actif ? '✓ ACTIF' : '✗ INACTIF'}
+        <span style={{
+          marginLeft: 'auto',
+          background: actif ? 'rgba(46,213,115,0.3)' : 'rgba(255,255,255,0.15)',
+          border: actif ? '1px solid rgba(46,213,115,0.5)' : '1px solid rgba(255,255,255,0.2)',
+          borderRadius: 20, padding: '3px 14px', fontSize: 11, fontWeight: 800,
+          letterSpacing: '0.5px',
+        }}>
+          {actif ? '✓ COUVERT' : '✗ INACTIF'}
         </span>
       </div>
 
-      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: 14 }}>
+      {actif && (
+        <div style={{ background: 'rgba(46,213,115,0.15)', border: '1px solid rgba(46,213,115,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FaCheckCircle size={14} color="rgba(46,213,115,0.9)" />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>
+            Vous êtes couvert jusqu'au {formatD(abonnement.dateExpiration)}
+          </span>
+        </div>
+      )}
+
+      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: actif && joursRestants !== null ? 14 : 0 }}>
         <div>
           <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date de paiement</p>
           <strong>{formatD(abonnement.datePaiement)}</strong>
         </div>
         <div>
           <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date d'expiration</p>
-          <strong>{formatD(abonnement.dateExpiration)}</strong>
+          <strong>{actif ? formatD(abonnement.dateExpiration) : '—'}</strong>
         </div>
         {abonnement.periodeCoverte && (
           <div style={{ gridColumn: 'span 2' }}>
@@ -116,8 +138,11 @@ function AbonnementCard({ abonnement }) {
       )}
 
       {!actif && (
-        <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
-          Votre abonnement annuel a expiré. Effectuez une cotisation annuelle pour le renouveler.
+        <p style={{ margin: '12px 0 0', fontSize: 13, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FaTimes size={12} style={{ flexShrink: 0 }} />
+          {jamaisPayé
+            ? "Aucun abonnement annuel actif. Effectuez une cotisation annuelle pour bénéficier de la couverture."
+            : "Votre abonnement annuel a expiré. Effectuez une cotisation annuelle pour le renouveler."}
         </p>
       )}
     </div>
@@ -204,10 +229,14 @@ function CotisationModal({ form, balance, onConfirm, onClose }) {
 
         {done ? (
           <div style={{ textAlign: 'center', padding: '12px 0' }}>
-            <FaCheckCircle size={56} color="#1565c0" style={{ marginBottom: 16 }} />
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1565c0', marginBottom: 8 }}>Paiement effectué !</h3>
+            <FaCheckCircle size={56} color={form.type === 'COTISATION_ANNUELLE' ? '#2e7d32' : '#1565c0'} style={{ marginBottom: 16 }} />
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: form.type === 'COTISATION_ANNUELLE' ? '#2e7d32' : '#1565c0', marginBottom: 8 }}>
+              {form.type === 'COTISATION_ANNUELLE' ? '✓ Vous êtes couvert !' : 'Paiement effectué !'}
+            </h3>
             <p style={{ fontSize: 14, color: '#555', marginBottom: 24 }}>
-              {formatAmount(form.montant)} ont été débités de votre portefeuille.
+              {form.type === 'COTISATION_ANNUELLE'
+                ? `Cotisation annuelle confirmée. Votre abonnement est actif pour 1 an.`
+                : `${formatAmount(form.montant)} ont été débités de votre portefeuille.`}
             </p>
             <button onClick={onClose} className="btn-add" style={{ padding: '12px 32px' }}>Fermer</button>
           </div>
@@ -445,9 +474,10 @@ function UserCotisationsView() {
 
   const handleConfirm = async () => {
     const paid = snapshot?.montant || Number(form.montant);
+    const type = snapshot?.type || form.type;
     const receipt = await payerCotisation({
       montant: paid,
-      type: snapshot?.type || form.type,
+      type,
       periodeCoverte: snapshot?.periodeCoverte || form.periodeCoverte || undefined,
       notes: snapshot?.notes || form.notes || undefined,
     });
@@ -455,9 +485,13 @@ function UserCotisationsView() {
     addToBalance(-paid);
     window.dispatchEvent(new CustomEvent('rsc:stats-refresh'));
     loadHistory();
+    // Rafraîchir la carte abonnement après tout paiement (surtout COTISATION_ANNUELLE)
+    getAbonnementAnnuel().then(setAbonnement).catch(() => {});
     setFeedback({
       type: 'success',
-      message: `Paiement de ${formatAmount(paid)} débité de votre portefeuille${receipt?.referenceTransaction ? ` (réf : ${receipt.referenceTransaction})` : ''}.`,
+      message: type === 'COTISATION_ANNUELLE'
+        ? `✓ Cotisation annuelle confirmée ! Vous êtes désormais couvert pour 1 an.`
+        : `Paiement de ${formatAmount(paid)} débité de votre portefeuille${receipt?.referenceTransaction ? ` (réf : ${receipt.referenceTransaction})` : ''}.`,
     });
     return receipt;
   };

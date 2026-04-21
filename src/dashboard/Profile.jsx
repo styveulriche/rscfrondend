@@ -6,7 +6,7 @@ import {
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import {
-  updateProfil, deletePhotoProfile,
+  updateProfil, uploadPhotoProfile, deletePhotoProfile,
   getQrCodeBase64, getQrCodeDownloadUrl, getLienParrainage, getProfile,
 } from '../services/users';
 import { getStatutsDiaspora } from '../services/public';
@@ -197,7 +197,8 @@ function Profile() {
     setSaving(true);
     setStatus(null);
     try {
-      const updatedResponse = await updateProfil(user.id, {
+      // Mettre à jour les champs texte (sans photo)
+      await updateProfil(user.id, {
         nom:            form.nom            || null,
         prenom:         form.prenom         || null,
         email:          form.email          || null,
@@ -206,26 +207,24 @@ function Profile() {
         sexe:           form.sexe           || null,
         paysOrigine:    form.paysOrigine    || null,
         statutDiaspora: form.statutDiaspora || null,
-        photo:          photoChanged ? photoFile : undefined,
       });
 
-      const fresh = await getProfile(user.id);
-
-      if (photoChanged) {
-        // Chercher l'URL dans la réponse du PUT ou du GET
-        const rawFromServer =
-          fresh?.photoProfile || fresh?.photo || fresh?.avatar ||
-          updatedResponse?.photoProfile || updatedResponse?.photo || updatedResponse?.avatar;
-        const serverUrl = buildMediaUrl(rawFromServer);
-
-        // Construire l'URL finale : URL serveur (avec cache-busting) ou blob URL de la session
-        const finalUrl = serverUrl ? `${serverUrl}?v=${Date.now()}` : photoPreview;
-
-        // Patcher fresh.photoProfile avec la bonne URL avant updateUser()
-        // → le useEffect([user]) lira directement cette valeur, pas besoin de ref
-        if (finalUrl) fresh.photoProfile = finalUrl;
+      // Upload photo via l'endpoint dédié pour garantir la persistance en BD
+      if (photoChanged && photoFile) {
+        const photoRes = await uploadPhotoProfile(user.id, photoFile);
+        const rawPhoto = photoRes?.photoProfile || photoRes?.photo || photoRes?.avatar || photoRes?.url;
+        const serverUrl = rawPhoto ? buildMediaUrl(rawPhoto) : null;
+        // Ne jamais stocker une blob URL dans le profil — elle expire en fin de session
+        const persistedUrl = serverUrl ? `${serverUrl}?v=${Date.now()}` : null;
+        updateUser({ photoProfile: persistedUrl || user.photoProfile });
+        if (persistedUrl) setPhotoPreview(persistedUrl);
+        setPhotoChanged(false);
+        setPhotoFile(null);
+        setStatus({ type: 'success', message: 'Profil mis à jour.' });
+        return;
       }
 
+      const fresh = await getProfile(user.id);
       updateUser(fresh);
       setPhotoChanged(false);
       setPhotoFile(null);

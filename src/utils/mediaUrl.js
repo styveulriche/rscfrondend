@@ -8,16 +8,18 @@ const MEDIA_ORIGIN = (() => {
 
 export const buildMediaUrl = (path) => {
   if (!path) return null;
-  if (/^(blob:|data:)/.test(path)) return path;
-  if (/^https?:\/\//.test(path)) {
+  const p = typeof path === 'string' ? path.trim() : path;
+  if (!p) return null;
+  if (/^(blob:|data:)/.test(p)) return p;
+  if (/^https?:\/\//.test(p)) {
     try {
-      const url = new URL(path);
+      const url = new URL(p);
       // Rewrite localhost URLs (backend returning internal hostnames)
       if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
         return `${MEDIA_ORIGIN}${url.pathname}${url.search}`;
       }
     } catch (_) { /* ignore */ }
-    return path;
+    return p;
   }
-  return `${MEDIA_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+  return `${MEDIA_ORIGIN}${p.startsWith('/') ? '' : '/'}${p}`;
 };

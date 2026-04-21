@@ -457,6 +457,13 @@ function Statistics() {
     return () => window.removeEventListener('rsc:stats-refresh', refreshAbonnement);
   }, [refreshAbonnement]);
 
+  // Polling : re-vérifie l'abonnement toutes les 30 s (rattrape les événements manqués)
+  useEffect(() => {
+    if (isAdmin) return undefined;
+    const id = setInterval(refreshAbonnement, 30000);
+    return () => clearInterval(id);
+  }, [isAdmin, refreshAbonnement]);
+
   useEffect(() => {
     setTime(getTimeLeft(probationInfo?.end));
     if (!probationInfo?.end) return undefined;
@@ -566,12 +573,20 @@ function Statistics() {
                 )}
 
                 {!actif && (
-                  <p style={{ margin: '12px 0 0', fontSize: 13, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <FaTimes size={12} style={{ flexShrink: 0 }} />
-                    {jamaisPayé
-                      ? 'Aucun abonnement actif. Rendez-vous dans Cotisations pour souscrire.'
-                      : 'Votre abonnement a expiré. Rendez-vous dans Cotisations pour le renouveler.'}
-                  </p>
+                  <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                    <p style={{ margin: 0, fontSize: 13, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FaTimes size={12} style={{ flexShrink: 0 }} />
+                      {jamaisPayé
+                        ? 'Aucun abonnement actif. Allez dans Cotisations → sélectionnez « Cotisation annuelle ».'
+                        : 'Abonnement expiré. Allez dans Cotisations → sélectionnez « Cotisation annuelle ».'}
+                    </p>
+                    <button
+                      onClick={refreshAbonnement}
+                      style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      Actualiser
+                    </button>
+                  </div>
                 )}
               </div>
             );

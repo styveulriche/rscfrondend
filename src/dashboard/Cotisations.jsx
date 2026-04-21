@@ -54,9 +54,10 @@ const TYPES_FALLBACK = [
 ];
 
 const STATUTS = [
-  { value: 'COMPLETE',   label: 'Complétée' },
+  { value: 'PAYE',       label: 'Payée' },
   { value: 'EN_ATTENTE', label: 'En attente' },
-  { value: 'ECHOUE',     label: 'Échouée' },
+  { value: 'EN_RETARD',  label: 'En retard' },
+  { value: 'EXONERE',    label: 'Exonérée' },
   { value: 'ANNULE',     label: 'Annulée' },
 ];
 
@@ -166,7 +167,7 @@ function Badge({ label, couleur, fallbackColor }) {
 /* ─── ligne cotisation ────────────────────────────────────────── */
 
 function CotisationRow({ c, showUser }) {
-  const statutColor = c.statut === 'COMPLETE' ? '#2e7d32' : c.statut === 'ECHOUE' ? '#c62828' : '#f57c00';
+  const statutColor = c.statut === 'PAYE' ? '#2e7d32' : c.statut === 'ECHOUE' ? '#c62828' : '#f57c00';
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid #f5f5f5', gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>

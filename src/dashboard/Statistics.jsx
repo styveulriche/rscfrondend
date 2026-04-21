@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FaWallet, FaHandHoldingHeart, FaChartLine, FaClock,
   FaMoneyBillWave, FaChartBar, FaUsers, FaSync, FaCalendarAlt,
+  FaCheckCircle, FaTimes,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
@@ -442,11 +443,19 @@ function Statistics() {
   const [time, setTime] = useState(() => getTimeLeft(probationInfo?.end));
   const [abonnement, setAbonnement] = useState(null);
 
-  useEffect(() => {
+  const refreshAbonnement = useCallback(() => {
     if (!isAdmin) {
       getAbonnementAnnuel().then(setAbonnement).catch(() => {});
     }
   }, [isAdmin]);
+
+  useEffect(() => { refreshAbonnement(); }, [refreshAbonnement]);
+
+  // Rafraîchir la carte abonnement dès qu'un paiement est effectué (depuis Cotisations.jsx)
+  useEffect(() => {
+    window.addEventListener('rsc:stats-refresh', refreshAbonnement);
+    return () => window.removeEventListener('rsc:stats-refresh', refreshAbonnement);
+  }, [refreshAbonnement]);
 
   useEffect(() => {
     setTime(getTimeLeft(probationInfo?.end));
@@ -494,51 +503,79 @@ function Statistics() {
             )}
           </div>
 
-          {abonnement && (
-            <div style={{
-              marginTop: 16,
-              background: abonnement.actif ? 'linear-gradient(135deg,#1565c0,#1976d2)' : 'linear-gradient(135deg,#37474f,#546e7a)',
-              borderRadius: 14, padding: '18px 22px', color: 'white',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <FaCalendarAlt size={16} color="rgba(255,255,255,0.8)" />
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Abonnement annuel RSC</p>
-                <span style={{ marginLeft: 'auto', background: abonnement.actif ? 'rgba(46,213,115,0.25)' : 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '2px 12px', fontSize: 11, fontWeight: 700 }}>
-                  {abonnement.actif ? '✓ ACTIF' : '✗ INACTIF'}
-                </span>
-              </div>
-              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: abonnement.joursRestants != null && abonnement.actif ? 14 : 0 }}>
-                <div>
-                  <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Paiement</p>
-                  <strong>{abonnement.datePaiement ? new Date(abonnement.datePaiement).toLocaleDateString('fr-CA') : '—'}</strong>
+          {abonnement && (() => {
+            const actif = abonnement.actif === true;
+            const jamaisPayé = !abonnement.datePaiement;
+            const joursRestants = abonnement.joursRestants ?? null;
+            const pct = joursRestants !== null ? Math.max(0, Math.min(100, Math.round((joursRestants / 365) * 100))) : null;
+            const barColor = joursRestants > 60 ? 'rgba(46,213,115,0.9)' : joursRestants > 20 ? '#f57c00' : '#c62828';
+            const fmtD = (v) => { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-CA'); };
+            return (
+              <div style={{
+                marginTop: 16,
+                background: actif ? 'linear-gradient(135deg,#1b5e20,#2e7d32)' : 'linear-gradient(135deg,#37474f,#546e7a)',
+                borderRadius: 14, padding: '18px 22px', color: 'white',
+                boxShadow: actif ? '0 4px 20px rgba(46,125,50,0.35)' : '0 2px 10px rgba(0,0,0,0.15)',
+                transition: 'all 0.4s ease',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <FaCalendarAlt size={16} color="rgba(255,255,255,0.8)" />
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Abonnement annuel RSC</p>
+                  <span style={{
+                    marginLeft: 'auto',
+                    background: actif ? 'rgba(46,213,115,0.3)' : 'rgba(255,255,255,0.15)',
+                    border: actif ? '1px solid rgba(46,213,115,0.5)' : '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 20, padding: '3px 14px', fontSize: 11, fontWeight: 800,
+                  }}>
+                    {actif ? '✓ COUVERT' : '✗ INACTIF'}
+                  </span>
                 </div>
-                <div>
-                  <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Expiration</p>
-                  <strong>{abonnement.dateExpiration ? new Date(abonnement.dateExpiration).toLocaleDateString('fr-CA') : '—'}</strong>
-                </div>
-              </div>
-              {abonnement.joursRestants != null && abonnement.actif && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, opacity: 0.85 }}>Jours restants</span>
-                    <span style={{ fontSize: 13, fontWeight: 800 }}>{abonnement.joursRestants} j</span>
+
+                {actif && (
+                  <div style={{ background: 'rgba(46,213,115,0.15)', border: '1px solid rgba(46,213,115,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FaCheckCircle size={14} color="rgba(46,213,115,0.9)" />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>
+                      Vous êtes couvert jusqu'au {fmtD(abonnement.dateExpiration)}
+                    </span>
                   </div>
-                  <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 999, height: 8, overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${Math.max(0, Math.min(100, Math.round((abonnement.joursRestants / 365) * 100)))}%`,
-                      height: '100%', borderRadius: 999, transition: 'width 0.5s',
-                      background: abonnement.joursRestants > 60 ? '#4caf50' : abonnement.joursRestants > 20 ? '#ff9800' : '#f44336',
-                    }} />
+                )}
+
+                <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13, marginBottom: joursRestants !== null && actif ? 14 : 0 }}>
+                  <div>
+                    <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date de paiement</p>
+                    <strong>{fmtD(abonnement.datePaiement)}</strong>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 2px', opacity: 0.75, fontSize: 11 }}>Date d'expiration</p>
+                    <strong>{actif ? fmtD(abonnement.dateExpiration) : '—'}</strong>
                   </div>
                 </div>
-              )}
-              {!abonnement.actif && (
-                <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
-                  Votre abonnement a expiré. Rendez-vous dans <strong>Cotisations</strong> pour le renouveler.
-                </p>
-              )}
-            </div>
-          )}
+
+                {joursRestants !== null && actif && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <FaClock size={11} /> Jours restants
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 800 }}>{joursRestants} j</span>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 999, height: 8, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 999, transition: 'width 0.5s' }} />
+                    </div>
+                  </div>
+                )}
+
+                {!actif && (
+                  <p style={{ margin: '12px 0 0', fontSize: 13, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FaTimes size={12} style={{ flexShrink: 0 }} />
+                    {jamaisPayé
+                      ? 'Aucun abonnement actif. Rendez-vous dans Cotisations pour souscrire.'
+                      : 'Votre abonnement a expiré. Rendez-vous dans Cotisations pour le renouveler.'}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

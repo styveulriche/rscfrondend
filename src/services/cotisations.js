@@ -57,6 +57,9 @@ export async function cotisationsStats() {
 }
 
 export async function getAbonnementAnnuel() {
-  const r = await api.get('/cotisations/abonnement-annuel');
+  const r = await api.get('/cotisations/abonnement-annuel', {
+    params: { _t: Date.now() },
+    headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+  });
   return r.data;
 }

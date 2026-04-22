@@ -136,7 +136,11 @@ export default function AddressAutocomplete({ value, onChange, onSelect, placeho
       setLoading(true);
       try {
         const detail = await retrieveCanadaPost(item.Id);
-        if (detail) onSelect(extractFromCanadaPost(detail));
+        if (detail) {
+          const fields = extractFromCanadaPost(detail);
+          onChange(fields.adresseComplete);
+          onSelect(fields);
+        }
       } finally {
         setLoading(false);
       }

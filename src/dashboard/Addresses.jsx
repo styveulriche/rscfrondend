@@ -182,18 +182,27 @@ function Addresses() {
                 </div>
                 <div>
                   <p className="settings-label">Ville <span style={{ color: '#c62828' }}>*</span></p>
-                  <select
-                    className="form-input"
-                    value={form.ville}
-                    onChange={(e) => setForm({ ...form, ville: e.target.value })}
-                    required
-                    disabled={!form.province}
-                  >
-                    <option value="">{form.province ? 'Sélectionner une ville' : '— Choisir une province d\'abord —'}</option>
-                    {(VILLES_PAR_PROVINCE[form.province] || []).map((v) => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const liste = VILLES_PAR_PROVINCE[form.province] || [];
+                    const villeHorsListe = form.ville && !liste.includes(form.ville);
+                    return (
+                      <select
+                        className="form-input"
+                        value={form.ville}
+                        onChange={(e) => setForm({ ...form, ville: e.target.value })}
+                        required
+                        disabled={!form.province}
+                      >
+                        <option value="">{form.province ? 'Sélectionner une ville' : '— Choisir une province d\'abord —'}</option>
+                        {villeHorsListe && (
+                          <option value={form.ville}>{form.ville}</option>
+                        )}
+                        {liste.map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    );
+                  })()}
                 </div>
                 <div>
                   <p className="settings-label">Code postal <span style={{ color: '#c62828' }}>*</span></p>

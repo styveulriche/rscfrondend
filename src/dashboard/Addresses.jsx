@@ -6,9 +6,6 @@ import { useRealtimeResource } from '../hooks/useRealtimeResource';
 import { REALTIME_INTERVALS } from '../config/realtime';
 import { StatsRow } from './Statistics';
 import AddressAutocomplete from '../components/AddressAutocomplete';
-import VILLES_PAR_PROVINCE from '../data/villesCanada';
-
-const PROVINCES_CA = Object.keys(VILLES_PAR_PROVINCE).sort((a, b) => a.localeCompare(b, 'fr'));
 
 const INITIAL_FORM = {
   province: '',
@@ -153,84 +150,71 @@ function Addresses() {
           <div style={{ background: 'var(--pink-ultra-light)', borderRadius: 10, padding: '16px 18px', marginBottom: 20, border: '1px solid var(--border-light)' }}>
             <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700 }}>Nouvelle adresse</h4>
             <form onSubmit={handleSubmit}>
-              <div className="settings-grid">
-                <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div>
                   <p className="settings-label">Rechercher l'adresse <span style={{ color: '#c62828' }}>*</span></p>
                   <AddressAutocomplete
                     value={form.adresseComplete}
-                    onChange={(val) => setForm({ ...form, adresseComplete: val })}
+                    onChange={(val) => setForm((prev) => ({ ...prev, adresseComplete: val }))}
                     onSelect={({ adresseComplete, ville, province, codePostal }) =>
                       setForm((prev) => ({ ...prev, adresseComplete, ville, province, codePostal }))
                     }
                     required
                   />
                   <p style={{ fontSize: 11, color: 'var(--text-gray)', margin: '4px 0 0' }}>
-                    Tapez votre adresse pour voir les suggestions, ou remplissez les champs manuellement.
+                    Tapez votre adresse — province, ville et code postal se remplissent automatiquement.
                   </p>
                 </div>
-                <div>
-                  <p className="settings-label">Province <span style={{ color: '#c62828' }}>*</span></p>
-                  <select
-                    className="form-input"
-                    value={form.province}
-                    onChange={(e) => setForm({ ...form, province: e.target.value, ville: '' })}
-                    required
-                  >
-                    <option value="">Sélectionner</option>
-                    {PROVINCES_CA.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div>
+                    <p className="settings-label">Province <span style={{ color: '#c62828' }}>*</span></p>
+                    <input
+                      className="form-input"
+                      placeholder="Auto-rempli"
+                      value={form.province}
+                      onChange={(e) => setForm((prev) => ({ ...prev, province: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <p className="settings-label">Ville <span style={{ color: '#c62828' }}>*</span></p>
+                    <input
+                      className="form-input"
+                      placeholder="Auto-rempli"
+                      value={form.ville}
+                      onChange={(e) => setForm((prev) => ({ ...prev, ville: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <p className="settings-label">Code postal <span style={{ color: '#c62828' }}>*</span></p>
+                    <input
+                      className="form-input"
+                      placeholder="H1A 1A1"
+                      value={form.codePostal}
+                      pattern="[A-Za-z][0-9][A-Za-z][\s]?[0-9][A-Za-z][0-9]"
+                      title="Code postal canadien requis, ex : H1A 1A1"
+                      maxLength={7}
+                      onChange={(e) => {
+                        const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        const formatted = raw.length > 3 ? `${raw.slice(0, 3)} ${raw.slice(3, 6)}` : raw;
+                        setForm((prev) => ({ ...prev, codePostal: formatted }));
+                      }}
+                      required
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <p className="settings-label">Ville <span style={{ color: '#c62828' }}>*</span></p>
-                  {(() => {
-                    const liste = VILLES_PAR_PROVINCE[form.province] || [];
-                    const villeHorsListe = form.ville && !liste.includes(form.ville);
-                    return (
-                      <select
-                        className="form-input"
-                        value={form.ville}
-                        onChange={(e) => setForm({ ...form, ville: e.target.value })}
-                        required
-                        disabled={!form.province}
-                      >
-                        <option value="">{form.province ? 'Sélectionner une ville' : '— Choisir une province d\'abord —'}</option>
-                        {villeHorsListe && (
-                          <option value={form.ville}>{form.ville}</option>
-                        )}
-                        {liste.map((v) => (
-                          <option key={v} value={v}>{v}</option>
-                        ))}
-                      </select>
-                    );
-                  })()}
-                </div>
-                <div>
-                  <p className="settings-label">Code postal <span style={{ color: '#c62828' }}>*</span></p>
-                  <input
-                    className="form-input"
-                    placeholder="H1A 1A1"
-                    value={form.codePostal}
-                    pattern="[A-Za-z][0-9][A-Za-z][\s]?[0-9][A-Za-z][0-9]"
-                    title="Code postal canadien requis, ex : H1A 1A1"
-                    maxLength={7}
-                    onChange={(e) => {
-                      const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                      const formatted = raw.length > 3 ? `${raw.slice(0, 3)} ${raw.slice(3, 6)}` : raw;
-                      setForm({ ...form, codePostal: formatted });
-                    }}
-                    required
-                  />
-                </div>
-                <div style={{ gridColumn: 'span 1' }}>
-                  <p className="settings-label" style={{ marginBottom: 10 }}>Adresse principale</p>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}>
                     <input
                       type="checkbox"
                       checked={form.estPrincipale}
-                      onChange={(e) => setForm({ ...form, estPrincipale: e.target.checked })}
+                      onChange={(e) => setForm((prev) => ({ ...prev, estPrincipale: e.target.checked }))}
                       style={{ width: 16, height: 16 }}
                     />
-                    Définir comme principale
+                    Définir comme adresse principale
                   </label>
                 </div>
               </div>
